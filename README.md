@@ -1,11 +1,19 @@
 # Newland ERP
 
-Newland ERP is an enterprise resource planning platform under staged architectural development. This
-repository currently contains only the Phase P1 repository foundation: governance, documentation,
-toolchains, quality controls, and continuous integration.
+Newland ERP is an enterprise resource planning platform under staged architectural development. The
+repository contains the completed Phase P1 repository foundation and the Phase P2 business
+architecture documentation baseline.
 
-No ERP business module, user interface, service, database, API, or sample business data exists in
-this phase.
+No runtime ERP implementation exists yet. There is no ERP business module, user interface, service,
+database migration, API, controller, page, dashboard, workflow implementation, or sample business
+data in this repository.
+
+## Current phase
+
+- P1 Repository Foundation is complete, approved, closed, and frozen.
+- P2 Business Architecture documentation has been added and is under architectural review.
+- The next approved gate is P2 architectural approval. P3 must not begin until that approval is
+  explicitly granted.
 
 ## Foundation stack
 
@@ -24,6 +32,17 @@ The selected versions are centralized in [`gradle/libs.versions.toml`](gradle/li
 and [`package.json`](package.json). The reasoning and rejected alternatives are recorded in
 [`docs/adr/0001-repository-foundation.md`](docs/adr/0001-repository-foundation.md).
 
+## Business architecture
+
+Phase P2 adds documentation for the ERP business architecture without adding runtime code. The
+business architecture index is
+[`docs/business-architecture/README.md`](docs/business-architecture/README.md).
+
+It defines the capability map, bounded contexts, context map, organization model, master-data
+architecture, transaction and financial domains, control domains, cross-cutting domains, process
+maps, event catalog, permission model, numbering and status architecture, reporting map, integration
+map, acceptance criteria, and open architectural decisions.
+
 ## Repository map
 
 ```text
@@ -32,7 +51,7 @@ and [`package.json`](package.json). The reasoning and rejected alternatives are 
 ├── apps/           Reserved deployable-application boundary
 ├── config/         Shared static-analysis configuration
 ├── contracts/      Reserved cross-boundary contract definitions
-├── docs/           Architecture, standards, decisions, and runbooks
+├── docs/           Architecture, business architecture, standards, decisions, and runbooks
 ├── gradle/         Wrapper and centralized JVM dependency versions
 ├── libs/           Reserved reusable-library boundary
 ├── platform/       Reserved delivery and runtime-platform boundary
@@ -86,7 +105,8 @@ Do not add a module by copying a directory ad hoc. First:
    request.
 4. Pass every local and CI quality gate.
 
-Business implementation is explicitly outside Phase P1.
+Business implementation remains outside the current approved scope. P2 documents architecture only;
+it does not authorize runtime implementation.
 
 ## Collaboration
 
