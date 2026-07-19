@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/nx/schemas/project-schema.json",
+  "name": "repository-foundation",
+  "projectType": "library",
+  "root": ".",
+  "sourceRoot": "tools",
+  "tags": ["scope:repository", "type:tooling"],
+  "targets": {
+    "architecture": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/architecture/verify.mjs",
+        "cwd": "."
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --project tsconfig.json --noEmit",
+        "cwd": "."
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm lint:eslint && pnpm lint:markdown",
+        "cwd": "."
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage"],
+      "options": {
+        "command": "vitest run",
+        "cwd": "."
+      }
+    }
+  }
+}

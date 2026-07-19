@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'contracts/*'
+  - 'libs/*'
+  - 'platform/*'
+  - 'tools/*'
+
+allowBuilds:
+  nx: true
+
+catalogMode: strict
+
+cleanupUnusedCatalogs: true
+
+minimumReleaseAge: 1440
+
+minimumReleaseAgeExclude:
+  - newland-erp
+
+strictDepBuilds: true

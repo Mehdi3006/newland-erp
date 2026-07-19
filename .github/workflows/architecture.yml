@@ -1,0 +1,55 @@
+name: Architecture Verification
+
+on:
+  pull_request:
+    paths:
+      - '.github/**'
+      - 'apps/**'
+      - 'contracts/**'
+      - 'docs/adr/**'
+      - 'docs/architecture/**'
+      - 'libs/**'
+      - 'platform/**'
+      - 'tools/architecture/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  merge_group:
+    types:
+      - checks_requested
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify repository boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Phase P1 architecture
+        run: pnpm architecture:verify

@@ -1,0 +1,52 @@
+name: Architecture change
+description: Propose a material technology, boundary, contract, or governance decision.
+title: 'architecture: '
+labels:
+  - 'type:architecture'
+  - 'status:needs-design'
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and problem
+      description: State the problem, constraints, evidence, and scope.
+    validations:
+      required: true
+  - type: textarea
+    id: drivers
+    attributes:
+      label: Decision drivers
+      placeholder: |
+        - Driver one
+        - Driver two
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and tradeoffs
+      description: Include at least two credible options.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Affected boundaries and owners
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation and rollback
+      description: Explain how the decision will be tested and reversed.
+    validations:
+      required: true
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Proposal readiness
+      options:
+        - label: I will add or update an ADR before implementation.
+          required: true
+        - label: I have not started unapproved business-module implementation.
+          required: true

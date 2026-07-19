@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "eslint.config.mjs",
+    "playwright.config.ts",
+    "tools/**/*.mjs",
+    "tools/**/*.ts",
+    "vitest.config.ts"
+  ]
+}

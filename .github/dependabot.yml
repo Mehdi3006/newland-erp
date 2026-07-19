@@ -1,0 +1,46 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    groups:
+      nx:
+        patterns:
+          - 'nx'
+          - '@nx/*'
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+    labels:
+      - 'area:dependencies'
+      - 'type:maintenance'
+
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:30'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - 'area:dependencies'
+      - 'type:maintenance'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - 'area:ci'
+      - 'area:dependencies'

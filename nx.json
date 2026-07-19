@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.test.ts",
+      "!{projectRoot}/vitest.config.ts",
+      "!{projectRoot}/playwright.config.ts"
+    ],
+    "sharedGlobals": [
+      "{workspaceRoot}/.editorconfig",
+      "{workspaceRoot}/.prettierrc.json",
+      "{workspaceRoot}/eslint.config.mjs",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/tsconfig.base.json"
+    ]
+  },
+  "targetDefaults": {
+    "architecture": {
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/docs/**/*", "{workspaceRoot}/.github/**/*"]
+    },
+    "build": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
+    },
+    "lint": {
+      "cache": true,
+      "inputs": ["default", "{workspaceRoot}/.markdownlint-cli2.jsonc"]
+    },
+    "test": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"],
+      "outputs": ["{workspaceRoot}/coverage"]
+    }
+  }
+}

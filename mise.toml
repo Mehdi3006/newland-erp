@@ -1,0 +1,7 @@
+[tools]
+java = "temurin-25"
+node = "24.18.0"
+pnpm = "11.9.0"
+
+[env]
+_.path = ["./node_modules/.bin"]

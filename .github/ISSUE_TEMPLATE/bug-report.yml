@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible problem in an approved repository capability.
+title: 'fix: '
+labels:
+  - 'type:bug'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include secrets, customer information, or unredacted logs.
+        Security vulnerabilities must use private vulnerability reporting.
+  - type: input
+    id: affected-version
+    attributes:
+      label: Affected commit or version
+      placeholder: Commit SHA, tag, or branch
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Describe the failure and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Provide the smallest deterministic reproduction.
+      placeholder: |
+        1. Run ...
+        2. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include relevant tool versions and operating system.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed credentials, private data, and customer information.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

@@ -1,0 +1,82 @@
+name: License and SBOM Evidence
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/supply-chain.yml'
+      - 'build.gradle.kts'
+      - 'gradle/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '57 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence:
+    name: Generate licenses and SBOMs
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate JavaScript license inventory
+        run: |
+          mkdir -p build/reports/licenses
+          pnpm licenses list --json > build/reports/licenses/node.json
+          pnpm license:check | tee build/reports/licenses/policy-check.txt
+
+      - name: Generate JVM CycloneDX SBOM
+        run: ./gradlew cyclonedxBom
+
+      - name: Generate repository CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          artifact-name: newland-erp-repository-sbom.cdx.json
+          format: cyclonedx-json
+          path: .
+
+      - name: Upload JVM SBOM and license inventory
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: newland-erp-supply-chain-evidence
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            build/reports/cyclonedx/**
+            build/reports/licenses/**

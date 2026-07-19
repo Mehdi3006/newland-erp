@@ -1,0 +1,10 @@
+.gradle
+.nx
+build
+coverage
+dist
+gradle/wrapper/gradle-wrapper.jar
+node_modules
+playwright-report
+pnpm-lock.yaml
+test-results

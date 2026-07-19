@@ -1,0 +1,17 @@
+# The repository owner is the Phase P1 fallback owner.
+* @Mehdi3006
+
+/.github/ @Mehdi3006
+/config/ @Mehdi3006
+/docs/adr/ @Mehdi3006
+/docs/architecture/ @Mehdi3006
+/docs/runbooks/ @Mehdi3006
+/docs/standards/ @Mehdi3006
+/gradle/ @Mehdi3006
+/tools/ @Mehdi3006
+
+# Reserved future boundaries require explicit architecture-owner review.
+/apps/ @Mehdi3006
+/contracts/ @Mehdi3006
+/libs/ @Mehdi3006
+/platform/ @Mehdi3006

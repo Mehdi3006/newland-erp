@@ -1,0 +1,41 @@
+{
+  "name": "newland-erp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository foundation for the Newland ERP enterprise monorepo",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "pnpm": ">=11.9.0 <12"
+  },
+  "scripts": {
+    "architecture:verify": "nx run repository-foundation:architecture",
+    "build": "nx run repository-foundation:build",
+    "check": "pnpm format:check && pnpm lint && pnpm build && pnpm test && pnpm architecture:verify && pnpm license:check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "license:check": "node tools/compliance/check-licenses.mjs",
+    "lint": "nx run repository-foundation:lint",
+    "lint:eslint": "eslint . --max-warnings 0",
+    "lint:markdown": "markdownlint-cli2",
+    "test": "nx run repository-foundation:test",
+    "test:e2e": "playwright test --pass-with-no-tests"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@nx/js": "23.1.0",
+    "@playwright/test": "1.61.1",
+    "@types/node": "24.13.3",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "10.7.0",
+    "globals": "17.7.0",
+    "markdownlint-cli2": "0.23.1",
+    "nx": "23.1.0",
+    "prettier": "3.9.5",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.64.0",
+    "vitest": "4.1.10"
+  }
+}
