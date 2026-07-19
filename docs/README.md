@@ -5,13 +5,15 @@ configuration it describes.
 
 ## Collections
 
-| Directory                                 | Purpose                                          | Change authority                        |
-| ----------------------------------------- | ------------------------------------------------ | --------------------------------------- |
-| [`adr/`](adr/README.md)                   | Durable architecture decisions and their context | Architecture owner plus affected owners |
-| [`architecture/`](architecture/README.md) | Current system and repository design             | Architecture owner                      |
-| [`standards/`](standards/README.md)       | Mandatory engineering and governance rules       | Repository maintainers                  |
-| [`runbooks/`](runbooks/README.md)         | Repeatable operational procedures                | Procedure owner                         |
-| [`decisions/`](decisions/README.md)       | Time-bounded, non-architectural decision records | Affected owner                          |
+| Directory                                                   | Purpose                                                               | Change authority                        |
+| ----------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------- |
+| [`adr/`](adr/README.md)                                     | Durable architecture decisions and their context                      | Architecture owner plus affected owners |
+| [`architecture/`](architecture/README.md)                   | Current system and repository design                                  | Architecture owner                      |
+| [`business-architecture/`](business-architecture/README.md) | Phase P2 ERP business architecture baseline                           | Business architecture owner             |
+| [`control/`](control/CURRENT_SYSTEM_STATE.md)               | Current phase state, module registry, roadmap, and next-task controls | Architecture owner                      |
+| [`standards/`](standards/README.md)                         | Mandatory engineering and governance rules                            | Repository maintainers                  |
+| [`runbooks/`](runbooks/README.md)                           | Repeatable operational procedures                                     | Procedure owner                         |
+| [`decisions/`](decisions/README.md)                         | Time-bounded, non-architectural decision records                      | Affected owner                          |
 
 An ADR explains why a material architecture decision was made. Architecture documents explain the
 current design. Standards state rules. Runbooks describe how to execute a procedure. Decision
