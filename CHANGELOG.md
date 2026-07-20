@@ -9,6 +9,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.2.5 Platform Foundation for internal domain events, outbox, audit records, background
+  jobs, scheduler-ready records, file storage abstraction, attachments, configuration/global
+  settings, feature flags, cache abstraction, localization, error catalog, and domain event catalog.
+- Versioned Platform REST APIs under `/api/v1/platform`, RFC 9457 Problem Details handling, OpenAPI
+  grouping, Flyway migration, jOOQ repository, Spring Modulith and ArchUnit checks, and PostgreSQL
+  Testcontainers coverage for P3.2.5.
 - Phase P3.2 Identity and Access foundation for users, roles, permissions, scoped assignments,
   sessions, refresh tokens, password credentials, and capability decisions.
 - Spring Security integration, JWT access-token issuance, refresh-token rotation, Argon2 password

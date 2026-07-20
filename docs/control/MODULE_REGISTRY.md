@@ -5,7 +5,7 @@ This registry tracks business architecture readiness. It is not a code module re
 | Module / context               | P2 business architecture | Implementation status | Notes                                                |
 | ------------------------------ | ------------------------ | --------------------- | ---------------------------------------------------- |
 | Enterprise Structure           | Defined                  | Implemented           | P3.1 approved and merged.                            |
-| Identity and Access            | Defined                  | P3.2 PR review        | Foundation implemented on P3.2 branch.               |
+| Identity and Access            | Defined                  | Implemented           | P3.2 approved and merged.                            |
 | Product Information Management | Defined                  | Not started           | Requires SKU and traceability decisions.             |
 | Inventory                      | Defined                  | Not started           | Requires valuation and negative-stock decisions.     |
 | Procurement                    | Defined                  | Not started           | Requires approval-limit decisions.                   |
@@ -28,3 +28,9 @@ This registry tracks business architecture readiness. It is not a code module re
 | Notification                   | Defined                  | Not started           | Channel and consent policy pending.                  |
 | Integration                    | Defined                  | Not started           | Priority and auth standards pending.                 |
 | System Administration          | Defined                  | Not started           | Implementation deferred.                             |
+
+## Platform Foundation
+
+| Foundation area | Implementation status | Notes                                                |
+| --------------- | --------------------- | ---------------------------------------------------- |
+| Shared Platform | P3.2.5 PR review      | Infrastructure-only foundation; no business modules. |

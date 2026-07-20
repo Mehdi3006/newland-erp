@@ -70,11 +70,14 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/NewlandErpApplication.java',
   'apps/backend/src/main/java/com/newland/erp/enterprise/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/identity/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/platform/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/platform/PlatformArchitectureTest.java',
   'apps/backend/src/main/resources/application.yml',
   'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V2__identity_access_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V3__platform_foundation.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -85,6 +88,8 @@ const approvedBackendJavaRoots = [
   'apps/backend/src/test/java/com/newland/erp/enterprise/',
   'apps/backend/src/main/java/com/newland/erp/identity/',
   'apps/backend/src/test/java/com/newland/erp/identity/',
+  'apps/backend/src/main/java/com/newland/erp/platform/',
+  'apps/backend/src/test/java/com/newland/erp/platform/',
 ];
 const approvedBackendResourceRoots = ['apps/backend/src/test/resources/'];
 const approvedBoundedContextLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
@@ -114,6 +119,18 @@ const approvedIdentityTables = new Set([
   'iam_password_credential',
   'iam_session',
   'iam_refresh_token',
+]);
+const approvedPlatformTables = new Set([
+  'platform_outbox',
+  'platform_audit_log',
+  'platform_background_job',
+  'platform_stored_file',
+  'platform_attachment',
+  'platform_configuration',
+  'platform_feature_flag',
+  'platform_localization_message',
+  'platform_error_catalog',
+  'platform_domain_event_catalog',
 ]);
 
 async function walk(directory) {
@@ -216,13 +233,12 @@ function boundedContextName(normalizedPath) {
 }
 
 function boundedContextLayer(normalizedPath) {
-  const marker = '/com/newland/erp/enterprise/';
-  const identityMarker = '/com/newland/erp/identity/';
-  const activeMarker = normalizedPath.includes(marker) ? marker : identityMarker;
-  const markerIndex = normalizedPath.indexOf(activeMarker);
-  if (markerIndex === -1 || !normalizedPath.includes(activeMarker)) {
+  const context = boundedContextName(normalizedPath);
+  if (!context) {
     return undefined;
   }
+  const activeMarker = `/com/newland/erp/${context}/`;
+  const markerIndex = normalizedPath.indexOf(activeMarker);
   const afterMarker = normalizedPath.slice(markerIndex + activeMarker.length);
   const layer = afterMarker.split('/')[0];
   return approvedBoundedContextLayers.has(layer) ? layer : undefined;
@@ -304,8 +320,12 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
     /\b(?:CREATE|ALTER)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"?([a-z][a-z0-9_]*)"?)/giu;
   for (const match of source.matchAll(tablePattern)) {
     const tableName = match[1];
-    if (!approvedEnterpriseTables.has(tableName) && !approvedIdentityTables.has(tableName)) {
-      return `ERP migrations may only define approved P3.1/P3.2 tables: ${normalizedPath} (${tableName})`;
+    if (
+      !approvedEnterpriseTables.has(tableName) &&
+      !approvedIdentityTables.has(tableName) &&
+      !approvedPlatformTables.has(tableName)
+    ) {
+      return `ERP migrations may only define approved P3.1/P3.2/P3.2.5 tables: ${normalizedPath} (${tableName})`;
     }
   }
 
@@ -359,7 +379,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved P3.1/P3.2 bounded-context boundaries are intact.',
+    'Architecture verification passed: approved P3.1/P3.2/P3.2.5 bounded-context boundaries are intact.',
   );
 }
 
