@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P2 business architecture documentation baseline.
+- Capability map, bounded contexts, context map, master-data architecture, process maps, event
+  catalog, permission model, numbering and status architecture, reporting map, integration map, and
+  control documents.
 - Phase P1 repository foundation.
 - Repository governance, standards, ADRs, runbooks, and contribution templates.
 - Gradle, pnpm, Nx, Java, Node.js, TypeScript, linting, formatting, and test foundations.
