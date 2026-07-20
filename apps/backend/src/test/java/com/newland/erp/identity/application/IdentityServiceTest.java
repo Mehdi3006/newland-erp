@@ -11,6 +11,7 @@ import com.newland.erp.identity.domain.ScopeType;
 import com.newland.erp.identity.domain.Session;
 import com.newland.erp.identity.domain.User;
 import com.newland.erp.identity.domain.UserRoleAssignment;
+import com.newland.erp.identity.domain.UserStatus;
 import com.newland.erp.identity.domain.Username;
 
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 final class IdentityServiceTest {
     @Test
@@ -54,6 +56,45 @@ final class IdentityServiceTest {
                 new OrganizationScope(ScopeType.COMPANY, companyScopeId)).granted()).isTrue();
         assertThat(service.decide(user.id(), IdentityPermissions.USER_MANAGE,
                 new OrganizationScope(ScopeType.COMPANY, otherCompanyScopeId)).granted()).isFalse();
+    }
+
+    @Test
+    void disabledUserLoginDoesNotMutateAccountState() {
+        final FakeIdentityRepository repository = new FakeIdentityRepository();
+        final IdentityService service = service(repository);
+        final User user = service.createUser(new IdentityCommands.CreateUser(new Username("disabled"),
+                new EmailAddress("disabled@example.com"), "Disabled", "StrongPass123"), "tester");
+        repository.updateUser(new User(user.id(), user.username(), user.email(), user.displayName(),
+                UserStatus.DISABLED, user.failedLoginAttempts(), user.lockedUntil(), user.passwordExpiresAt(),
+                user.createdAt(), user.updatedAt()));
+
+        assertThatThrownBy(() -> service.login(new IdentityCommands.Login(user.username(), "WrongPass123",
+                "browser", false))).isInstanceOf(com.newland.erp.identity.domain.AuthenticationFailedException.class);
+
+        final User stored = repository.findUser(user.id()).orElseThrow();
+        assertThat(stored.status()).isEqualTo(UserStatus.DISABLED);
+        assertThat(stored.failedLoginAttempts()).isZero();
+    }
+
+    @Test
+    void refreshRejectsRevokedSessionEvenWhenRefreshTokenIsOtherwiseUsable() {
+        final FakeIdentityRepository repository = new FakeIdentityRepository();
+        final IdentityService service = service(repository);
+        final User user = service.createUser(new IdentityCommands.CreateUser(new Username("owner"),
+                new EmailAddress("owner@example.com"), "Owner", "StrongPass123"), "tester");
+        final AuthTokens tokens = service.login(new IdentityCommands.Login(user.username(), "StrongPass123",
+                "browser", false));
+        service.revokeSession(tokens.sessionId(), "tester");
+
+        assertThatThrownBy(() -> service.refresh(tokens.refreshToken()))
+                .isInstanceOf(com.newland.erp.identity.domain.AuthenticationFailedException.class);
+    }
+
+    private static IdentityService service(final FakeIdentityRepository repository) {
+        return new IdentityService(repository, new PlainTestHasher(), new FakeTokenService(),
+                event -> {
+                }, (ApplicationEventPublisher) event -> {
+                }, Clock.fixed(Instant.parse("2026-07-20T00:00:00Z"), ZoneOffset.UTC));
     }
 
     private static final class PlainTestHasher implements PasswordHasher {
@@ -91,6 +132,8 @@ final class IdentityServiceTest {
         private final Map<UUID, Role> roles = new HashMap<>();
         private final Map<UUID, Permission> permissions = new HashMap<>();
         private final Map<UUID, PasswordCredential> credentials = new HashMap<>();
+        private final Map<UUID, Session> sessions = new HashMap<>();
+        private final Map<String, RefreshToken> refreshTokensByHash = new HashMap<>();
         private final List<UserRoleAssignment> userRoles = new ArrayList<>();
         private final List<RolePermissionAssignment> rolePermissions = new ArrayList<>();
 
@@ -226,37 +269,41 @@ final class IdentityServiceTest {
 
         @Override
         public Session insertSession(final Session session) {
+            sessions.put(session.id(), session);
             return session;
         }
 
         @Override
         public Session updateSession(final Session session) {
+            sessions.put(session.id(), session);
             return session;
         }
 
         @Override
         public Optional<Session> findSession(final UUID id) {
-            return Optional.empty();
+            return Optional.ofNullable(sessions.get(id));
         }
 
         @Override
         public List<Session> listSessions(final UUID userId) {
-            return List.of();
+            return sessions.values().stream().filter(session -> session.userId().equals(userId)).toList();
         }
 
         @Override
         public RefreshToken insertRefreshToken(final RefreshToken token) {
+            refreshTokensByHash.put(token.tokenHash(), token);
             return token;
         }
 
         @Override
         public RefreshToken updateRefreshToken(final RefreshToken token) {
+            refreshTokensByHash.put(token.tokenHash(), token);
             return token;
         }
 
         @Override
         public Optional<RefreshToken> findRefreshTokenByHash(final String tokenHash) {
-            return Optional.empty();
+            return Optional.ofNullable(refreshTokensByHash.get(tokenHash));
         }
     }
 }

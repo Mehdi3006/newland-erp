@@ -168,7 +168,10 @@ public final class IdentityService {
                 .orElseThrow(() -> new AuthenticationFailedException("Invalid credentials."));
         final PasswordCredential credential = repository.findCurrentCredential(user.id())
                 .orElseThrow(() -> new AuthenticationFailedException("Invalid credentials."));
-        if (!user.canAuthenticate(now()) || !passwordHasher.matches(command.password(), credential.passwordHash())) {
+        if (!user.canAuthenticate(now())) {
+            throw new AuthenticationFailedException("Invalid credentials.");
+        }
+        if (!passwordHasher.matches(command.password(), credential.passwordHash())) {
             repository.updateUser(user.recordFailedLogin(passwordPolicy.maxFailedAttempts(),
                     passwordPolicy.lockDuration(), now()));
             throw new AuthenticationFailedException("Invalid credentials.");
@@ -195,6 +198,11 @@ public final class IdentityService {
                 .orElseThrow(() -> new AuthenticationFailedException("Invalid refresh token."));
         if (!token.usable(now())) {
             throw new AuthenticationFailedException("Refresh token is expired, rotated, or revoked.");
+        }
+        final Session session = repository.findSession(token.sessionId())
+                .orElseThrow(() -> new AuthenticationFailedException("Invalid refresh token."));
+        if (!session.active(now())) {
+            throw new AuthenticationFailedException("Refresh token session is expired or revoked.");
         }
         final User user = user(token.userId());
         final String nextRefreshToken = tokenService.newRefreshToken();
