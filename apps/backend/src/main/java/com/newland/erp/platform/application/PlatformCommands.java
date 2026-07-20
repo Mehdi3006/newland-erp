@@ -19,6 +19,9 @@ public final class PlatformCommands {
     public record RegisterStoredFile(String fileName, String contentType, long sizeBytes, String checksumSha256) {
     }
 
+    public record StoreFile(String fileName, String contentType, byte[] content, String checksumSha256) {
+    }
+
     public record AttachFile(String ownerContext, String ownerType, UUID ownerId, UUID fileId) {
     }
 

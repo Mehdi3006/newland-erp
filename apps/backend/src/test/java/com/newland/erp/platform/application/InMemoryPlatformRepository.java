@@ -19,6 +19,8 @@ import java.util.UUID;
 
 final class InMemoryPlatformRepository implements PlatformRepository {
     private final List<OutboxMessage> outbox = new ArrayList<>();
+    private final List<BackgroundJob> jobs = new ArrayList<>();
+    private final List<StoredFile> files = new ArrayList<>();
 
     @Override
     public OutboxMessage insertOutboxMessage(final OutboxMessage message) {
@@ -43,22 +45,24 @@ final class InMemoryPlatformRepository implements PlatformRepository {
 
     @Override
     public BackgroundJob insertBackgroundJob(final BackgroundJob job) {
+        jobs.add(job);
         return job;
     }
 
     @Override
     public List<BackgroundJob> listJobs() {
-        return List.of();
+        return List.copyOf(jobs);
     }
 
     @Override
     public StoredFile insertStoredFile(final StoredFile file) {
+        files.add(file);
         return file;
     }
 
     @Override
     public Optional<StoredFile> findStoredFile(final UUID id) {
-        return Optional.empty();
+        return files.stream().filter(file -> file.id().equals(id)).findFirst();
     }
 
     @Override

@@ -27,12 +27,17 @@ import java.util.UUID;
 public final class PlatformService {
     private final PlatformRepository repository;
     private final DomainEventBus eventBus;
+    private final FileStoragePort fileStorage;
+    private final SchedulerPort scheduler;
     private final Clock clock;
 
     public PlatformService(final PlatformRepository platformRepository, final DomainEventBus bus,
+                           final FileStoragePort storagePort, final SchedulerPort schedulerPort,
                            final Clock systemClock) {
         this.repository = platformRepository;
         this.eventBus = bus;
+        this.fileStorage = storagePort;
+        this.scheduler = schedulerPort;
         this.clock = systemClock;
     }
 
@@ -52,8 +57,11 @@ public final class PlatformService {
 
     @Transactional
     public BackgroundJob scheduleJob(final PlatformCommands.ScheduleJob command) {
-        return repository.insertBackgroundJob(new BackgroundJob(UUID.randomUUID(), command.jobType(),
-                JobStatus.SCHEDULED, command.scheduledAt(), null, null, command.parameters(), null));
+        final BackgroundJob job = repository.insertBackgroundJob(new BackgroundJob(UUID.randomUUID(),
+                command.jobType(), JobStatus.SCHEDULED, command.scheduledAt(), null, null,
+                command.parameters(), null));
+        scheduler.schedule(job.id(), job.jobType(), job.scheduledAt(), job.parameters());
+        return job;
     }
 
     @Transactional
@@ -61,6 +69,14 @@ public final class PlatformService {
         final String key = "platform/" + UUID.randomUUID();
         return repository.insertStoredFile(new StoredFile(UUID.randomUUID(), key, command.fileName(),
                 command.contentType(), command.sizeBytes(), command.checksumSha256(), now()));
+    }
+
+    @Transactional
+    public StoredFile storeFile(final PlatformCommands.StoreFile command) {
+        final String key = "platform/" + UUID.randomUUID();
+        final String storageKey = fileStorage.put(key, command.content());
+        return repository.insertStoredFile(new StoredFile(UUID.randomUUID(), storageKey, command.fileName(),
+                command.contentType(), command.content().length, command.checksumSha256(), now()));
     }
 
     @Transactional
