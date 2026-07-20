@@ -1,5 +1,9 @@
 import org.gradle.api.initialization.resolve.RepositoriesMode
 
+if (gradle.startParameter.taskNames.contains("dependencyUpdates")) {
+    gradle.startParameter.isParallelProjectExecutionEnabled = false
+}
+
 pluginManagement {
     repositories {
         gradlePluginPortal()

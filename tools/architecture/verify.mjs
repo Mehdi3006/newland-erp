@@ -57,20 +57,45 @@ export const requiredFoundationFiles = [
   'vitest.config.ts',
 ];
 
-const reservedP1Directories = ['apps', 'contracts', 'libs', 'platform'];
-const reservedDocumentation = new Set(
-  reservedP1Directories.map((directory) => `${directory}/README.md`),
-);
-const forbiddenExtensions = new Set(['.java', '.jsx', '.kt', '.kts', '.sql', '.tsx']);
-const forbiddenNames = new Set([
-  'Dockerfile',
-  'compose.yml',
-  'compose.yaml',
-  'docker-compose.yml',
-  'docker-compose.yaml',
-  'openapi.json',
-  'openapi.yaml',
-  'openapi.yml',
+const reservedDocumentation = new Set([
+  'apps/README.md',
+  'contracts/README.md',
+  'libs/README.md',
+  'platform/README.md',
+]);
+const reservedNonRuntimeDirectories = ['contracts', 'libs', 'platform'];
+const approvedBackendFiles = new Set([
+  'apps/backend/build.gradle.kts',
+  'apps/backend/gradle.lockfile',
+  'apps/backend/src/main/java/com/newland/erp/NewlandErpApplication.java',
+  'apps/backend/src/main/java/com/newland/erp/enterprise/package-info.java',
+  'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
+  'apps/backend/src/main/resources/application.yml',
+  'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
+]);
+const approvedFrontendFiles = new Set(['apps/web/enterprise-structure/index.html']);
+const approvedBackendJavaRoots = [
+  'apps/backend/src/main/java/com/newland/erp/enterprise/',
+  'apps/backend/src/test/java/com/newland/erp/enterprise/',
+];
+const approvedBackendResourceRoots = ['apps/backend/src/test/resources/'];
+const approvedEnterpriseLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
+const generatedOrExternalDirectories = [
+  '.gradle/',
+  'build/',
+  'coverage/',
+  'dist/',
+  'node_modules/',
+  'playwright-report/',
+];
+const approvedEnterpriseTables = new Set([
+  'enterprise',
+  'legal_entity',
+  'company',
+  'branch',
+  'warehouse',
+  'warehouse_zone',
+  'warehouse_location',
 ]);
 
 async function walk(directory) {
@@ -89,19 +114,150 @@ async function walk(directory) {
   return paths;
 }
 
-export function classifyP1Violation(repositoryPath) {
+export function classifyRepositoryPathViolation(repositoryPath) {
   const normalizedPath = repositoryPath.replaceAll('\\', '/');
-  const fileName = normalizedPath.split('/').at(-1) ?? '';
-  const extension = fileName.includes('.') ? `.${fileName.split('.').at(-1)}` : '';
 
-  if (reservedP1Directories.some((directory) => normalizedPath.startsWith(`${directory}/`))) {
+  if (isGeneratedOrExternalPath(normalizedPath)) {
+    return undefined;
+  }
+
+  if (
+    reservedNonRuntimeDirectories.some((directory) => normalizedPath.startsWith(`${directory}/`))
+  ) {
     if (!reservedDocumentation.has(normalizedPath)) {
-      return `reserved P1 boundary contains implementation: ${normalizedPath}`;
+      return `reserved repository boundary contains unapproved implementation: ${normalizedPath}`;
+    }
+    return undefined;
+  }
+
+  if (normalizedPath === 'apps/README.md') {
+    return undefined;
+  }
+
+  if (!normalizedPath.startsWith('apps/')) {
+    return undefined;
+  }
+
+  if (normalizedPath.startsWith('apps/web/')) {
+    if (approvedFrontendFiles.has(normalizedPath)) {
+      return undefined;
+    }
+    return `unapproved frontend artifact: ${normalizedPath}`;
+  }
+
+  if (!normalizedPath.startsWith('apps/backend/')) {
+    return `unapproved application boundary: ${normalizedPath}`;
+  }
+
+  if (approvedBackendFiles.has(normalizedPath)) {
+    return undefined;
+  }
+
+  if (approvedBackendJavaRoots.some((root) => normalizedPath.startsWith(root))) {
+    if (!normalizedPath.endsWith('.java')) {
+      return `approved backend Java roots may contain only Java source: ${normalizedPath}`;
+    }
+    const layer = enterpriseLayer(normalizedPath);
+    if (!layer) {
+      return `enterprise backend source must be inside an approved layer: ${normalizedPath}`;
+    }
+    return undefined;
+  }
+
+  if (approvedBackendResourceRoots.some((root) => normalizedPath.startsWith(root))) {
+    return undefined;
+  }
+
+  return `unapproved backend artifact: ${normalizedPath}`;
+}
+
+function isGeneratedOrExternalPath(normalizedPath) {
+  return generatedOrExternalDirectories.some(
+    (directory) => normalizedPath.startsWith(directory) || normalizedPath.includes(`/${directory}`),
+  );
+}
+
+export function classifyP1Violation(repositoryPath) {
+  return classifyRepositoryPathViolation(repositoryPath);
+}
+
+function enterpriseLayer(normalizedPath) {
+  const marker = '/com/newland/erp/enterprise/';
+  const markerIndex = normalizedPath.indexOf(marker);
+  if (markerIndex === -1) {
+    return undefined;
+  }
+  const afterMarker = normalizedPath.slice(markerIndex + marker.length);
+  const layer = afterMarker.split('/')[0];
+  return approvedEnterpriseLayers.has(layer) ? layer : undefined;
+}
+
+export function classifyJavaBoundaryViolation(repositoryPath, source) {
+  const normalizedPath = repositoryPath.replaceAll('\\', '/');
+  const isTestSource = normalizedPath.includes('/src/test/');
+  if (!normalizedPath.endsWith('.java')) {
+    return undefined;
+  }
+
+  const importsAnotherBoundedContext = source
+    .split('\n')
+    .some(
+      (line) =>
+        line.startsWith('import com.newland.erp.') &&
+        !line.startsWith('import com.newland.erp.enterprise.') &&
+        !line.startsWith('import com.newland.erp.NewlandErpApplication;'),
+    );
+
+  if (importsAnotherBoundedContext) {
+    return `enterprise backend must not depend on another bounded context: ${normalizedPath}`;
+  }
+
+  const layer = enterpriseLayer(normalizedPath);
+  if (layer === 'domain') {
+    if (
+      source.match(
+        /import (com\.newland\.erp\.enterprise\.(api|application|infrastructure)|jakarta\.|org\.jooq\.|org\.springframework\.)/,
+      )
+    ) {
+      return `domain layer must not depend on application, API, infrastructure, or framework code: ${normalizedPath}`;
     }
   }
 
-  if (forbiddenExtensions.has(extension) || forbiddenNames.has(fileName)) {
-    return `runtime or business artifact is forbidden in P1: ${normalizedPath}`;
+  if (layer === 'application') {
+    if (source.match(/import (com\.newland\.erp\.enterprise\.(api|infrastructure)|org\.jooq\.)/)) {
+      return `application layer must not depend on API, infrastructure, or persistence code: ${normalizedPath}`;
+    }
+  }
+
+  if (layer === 'api') {
+    if (source.match(/import (com\.newland\.erp\.enterprise\.infrastructure|org\.jooq\.)/)) {
+      return `API layer must not depend on infrastructure or persistence code: ${normalizedPath}`;
+    }
+    if (!isTestSource && source.includes('EnterpriseStructureRepository')) {
+      return `API layer must use application services instead of repositories: ${normalizedPath}`;
+    }
+  }
+
+  if (layer === 'infrastructure' && source.includes('import com.newland.erp.enterprise.api.')) {
+    return `infrastructure layer must not depend on API code: ${normalizedPath}`;
+  }
+
+  return undefined;
+}
+
+function classifySqlBoundaryViolation(repositoryPath, source) {
+  const normalizedPath = repositoryPath.replaceAll('\\', '/');
+  if (!normalizedPath.endsWith('.sql')) {
+    return undefined;
+  }
+
+  const tablePattern =
+    /\b(?:CREATE|ALTER)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"?([a-z][a-z0-9_]*)"?)/giu;
+  for (const match of source.matchAll(tablePattern)) {
+    const tableName = match[1];
+    if (!approvedEnterpriseTables.has(tableName)) {
+      return `enterprise migration may only define approved P3.1 tables: ${normalizedPath} (${tableName})`;
+    }
   }
 
   return undefined;
@@ -118,13 +274,21 @@ export async function inspectFoundation(repositoryRoot) {
     }
   }
 
-  for (const directory of reservedP1Directories) {
+  for (const directory of ['apps', ...reservedNonRuntimeDirectories]) {
     const files = await walk(resolve(repositoryRoot, directory));
     for (const file of files) {
       const repositoryPath = relative(repositoryRoot, file);
-      const violation = classifyP1Violation(repositoryPath);
-      if (violation) {
-        issues.push(violation);
+      const pathViolation = classifyRepositoryPathViolation(repositoryPath);
+      if (pathViolation) {
+        issues.push(pathViolation);
+        continue;
+      }
+      const source = await readFile(file, 'utf8');
+      const sourceViolation =
+        classifyJavaBoundaryViolation(repositoryPath, source) ??
+        classifySqlBoundaryViolation(repositoryPath, source);
+      if (sourceViolation) {
+        issues.push(sourceViolation);
       }
     }
   }
@@ -145,7 +309,9 @@ async function main() {
     return;
   }
 
-  console.log('Architecture verification passed: Phase P1 boundaries are intact.');
+  console.log(
+    'Architecture verification passed: approved P3.1 Enterprise Structure boundaries are intact.',
+  );
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

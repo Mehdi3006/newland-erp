@@ -19,7 +19,11 @@ public record Enterprise(
         require(audit, "enterprise audit");
     }
 
-    public Enterprise rename(final DisplayName newName, final LocalizedName newLocalizedName, final AuditMetadata nextAudit) {
+    public Enterprise rename(
+            final DisplayName newName,
+            final LocalizedName newLocalizedName,
+            final AuditMetadata nextAudit
+    ) {
         return new Enterprise(id, code, newName, newLocalizedName, status, nextAudit);
     }
 

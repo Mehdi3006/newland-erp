@@ -4,6 +4,7 @@ checkstyle = "13.8.0"
 cyclonedx = "3.3.0"
 detekt = "1.23.8"
 flyway = "12.4.0"
+gradle-versions = "0.54.0"
 jooq = "3.21.5"
 junit = "6.1.2"
 ktlint = "1.8.0"
@@ -24,6 +25,7 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 springdoc-openapi-webmvc = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "springdoc" }
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core", version.ref = "spring-modulith" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test", version.ref = "spring-modulith" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter", version.ref = "testcontainers" }
@@ -33,5 +35,6 @@ testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgr
 cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 dependency-check = { id = "org.owasp.dependencycheck", version.ref = "owasp-dependency-check" }
+gradle-versions = { id = "com.github.ben-manes.versions", version.ref = "gradle-versions" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

@@ -48,17 +48,17 @@ public final class EnterpriseStructureService {
     private final Clock clock;
 
     public EnterpriseStructureService(
-            final EnterpriseStructureRepository repository,
-            final AuthorizationPort authorization,
-            final AuditPort audit,
-            final ApplicationEventPublisher events,
-            final Clock clock
+            final EnterpriseStructureRepository repositoryPort,
+            final AuthorizationPort authorizationPort,
+            final AuditPort auditPort,
+            final ApplicationEventPublisher eventPublisher,
+            final Clock systemClock
     ) {
-        this.repository = repository;
-        this.authorization = authorization;
-        this.audit = audit;
-        this.events = events;
-        this.clock = clock;
+        this.repository = repositoryPort;
+        this.authorization = authorizationPort;
+        this.audit = auditPort;
+        this.events = eventPublisher;
+        this.clock = systemClock;
     }
 
     @Transactional
@@ -78,8 +78,11 @@ public final class EnterpriseStructureService {
     public Enterprise updateEnterprise(final UpdateEnterprise command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.ENTERPRISE_MANAGE);
         final Enterprise enterprise = enterprise(command.id());
-        return repository.updateEnterprise(enterprise.rename(command.name(), command.localizedName(),
-                enterprise.audit().touched(now(), metadata.actor())), command.expectedVersion());
+        final Enterprise updated = repository.updateEnterprise(enterprise.rename(command.name(),
+                command.localizedName(), enterprise.audit().touched(now(), metadata.actor())),
+                command.expectedVersion());
+        publish("EnterpriseUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -137,9 +140,12 @@ public final class EnterpriseStructureService {
     public LegalEntity updateLegalEntity(final UpdateLegalEntity command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.LEGAL_ENTITY_MANAGE);
         final LegalEntity legalEntity = legalEntity(command.id());
-        return repository.updateLegalEntity(legalEntity.update(command.name(), command.localizedName(),
-                command.countryCode(), command.baseCurrency(), legalEntity.audit().touched(now(), metadata.actor())),
+        final LegalEntity updated = repository.updateLegalEntity(legalEntity.update(command.name(),
+                command.localizedName(), command.countryCode(), command.baseCurrency(),
+                legalEntity.audit().touched(now(), metadata.actor())),
                 command.expectedVersion());
+        publish("LegalEntityUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -199,9 +205,11 @@ public final class EnterpriseStructureService {
     public Company updateCompany(final UpdateCompany command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.COMPANY_MANAGE);
         final Company company = company(command.id());
-        return repository.updateCompany(company.update(command.name(), command.localizedName(), command.countryCode(),
-                command.baseCurrency(), command.timeZoneId(), command.address(), company.audit().touched(now(),
-                        metadata.actor())), command.expectedVersion());
+        final Company updated = repository.updateCompany(company.update(command.name(), command.localizedName(),
+                command.countryCode(), command.baseCurrency(), command.timeZoneId(), command.address(),
+                company.audit().touched(now(), metadata.actor())), command.expectedVersion());
+        publish("CompanyUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -260,8 +268,11 @@ public final class EnterpriseStructureService {
     public Branch updateBranch(final UpdateBranch command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.BRANCH_MANAGE);
         final Branch branch = branch(command.id());
-        return repository.updateBranch(branch.update(command.name(), command.localizedName(), command.address(),
+        final Branch updated = repository.updateBranch(branch.update(command.name(), command.localizedName(),
+                command.address(),
                 branch.audit().touched(now(), metadata.actor())), command.expectedVersion());
+        publish("BranchUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -282,8 +293,10 @@ public final class EnterpriseStructureService {
             throw new ReferencedByActiveChildrenException("Branch has active warehouses.");
         }
         final Branch branch = branch(id);
-        final Branch updated = repository.updateBranch(branch.deactivate(branch.audit().touched(now(), metadata.actor())),
-                branch.audit().version());
+        final Branch updated = repository.updateBranch(
+                branch.deactivate(branch.audit().touched(now(), metadata.actor())),
+                branch.audit().version()
+        );
         publish("BranchDeactivated", updated.id(), metadata, Map.of("code", updated.code().value()));
         return updated;
     }
@@ -322,9 +335,12 @@ public final class EnterpriseStructureService {
     public Warehouse updateWarehouse(final UpdateWarehouse command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.WAREHOUSE_MANAGE);
         final Warehouse warehouse = warehouse(command.id());
-        return repository.updateWarehouse(warehouse.update(command.name(), command.localizedName(), command.type(),
+        final Warehouse updated = repository.updateWarehouse(warehouse.update(command.name(), command.localizedName(),
+                command.type(),
                 command.projectReference(), command.address(), warehouse.audit().touched(now(), metadata.actor())),
                 command.expectedVersion());
+        publish("WarehouseUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -392,8 +408,10 @@ public final class EnterpriseStructureService {
     public WarehouseZone updateZone(final UpdateZone command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.LOCATION_MANAGE);
         final WarehouseZone zone = zone(command.id());
-        return repository.updateZone(zone.update(command.name(), command.localizedName(), zone.audit().touched(now(),
-                metadata.actor())), command.expectedVersion());
+        final WarehouseZone updated = repository.updateZone(zone.update(command.name(), command.localizedName(),
+                zone.audit().touched(now(), metadata.actor())), command.expectedVersion());
+        publish("WarehouseZoneUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -401,8 +419,11 @@ public final class EnterpriseStructureService {
         authorization.require(EnterpriseStructurePermissions.LOCATION_MANAGE);
         final WarehouseZone zone = zone(id);
         requireActive(warehouse(zone.warehouseId()).status(), "warehouse");
-        return repository.updateZone(zone.activate(zone.audit().touched(now(), metadata.actor())),
+        final WarehouseZone updated = repository.updateZone(zone.activate(zone.audit().touched(now(),
+                metadata.actor())),
                 zone.audit().version());
+        publish("WarehouseZoneActivated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -412,8 +433,17 @@ public final class EnterpriseStructureService {
             throw new ReferencedByActiveChildrenException("Zone has active locations.");
         }
         final WarehouseZone zone = zone(id);
-        return repository.updateZone(zone.deactivate(zone.audit().touched(now(), metadata.actor())),
+        final WarehouseZone updated = repository.updateZone(zone.deactivate(zone.audit().touched(now(),
+                metadata.actor())),
                 zone.audit().version());
+        publish("WarehouseZoneDeactivated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
+    }
+
+    @Transactional(readOnly = true)
+    public WarehouseZone getZone(final UUID id) {
+        authorization.require(EnterpriseStructurePermissions.LOCATION_READ);
+        return zone(id);
     }
 
     @Transactional(readOnly = true)
@@ -442,8 +472,11 @@ public final class EnterpriseStructureService {
     public WarehouseLocation updateLocation(final UpdateLocation command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.LOCATION_MANAGE);
         final WarehouseLocation location = location(command.id());
-        return repository.updateLocation(location.update(command.name(), command.localizedName(),
-                location.audit().touched(now(), metadata.actor())), command.expectedVersion());
+        final WarehouseLocation updated = repository.updateLocation(location.update(command.name(),
+                command.localizedName(), location.audit().touched(now(), metadata.actor())),
+                command.expectedVersion());
+        publish("WarehouseLocationUpdated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
@@ -451,16 +484,28 @@ public final class EnterpriseStructureService {
         authorization.require(EnterpriseStructurePermissions.LOCATION_MANAGE);
         final WarehouseLocation location = location(id);
         requireActive(zone(location.zoneId()).status(), "zone");
-        return repository.updateLocation(location.activate(location.audit().touched(now(), metadata.actor())),
+        final WarehouseLocation updated = repository.updateLocation(location.activate(location.audit().touched(now(),
+                metadata.actor())),
                 location.audit().version());
+        publish("WarehouseLocationActivated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
     }
 
     @Transactional
     public WarehouseLocation deactivateLocation(final UUID id, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.LOCATION_MANAGE);
         final WarehouseLocation location = location(id);
-        return repository.updateLocation(location.deactivate(location.audit().touched(now(), metadata.actor())),
+        final WarehouseLocation updated = repository.updateLocation(location.deactivate(location.audit().touched(now(),
+                metadata.actor())),
                 location.audit().version());
+        publish("WarehouseLocationDeactivated", updated.id(), metadata, Map.of("code", updated.code().value()));
+        return updated;
+    }
+
+    @Transactional(readOnly = true)
+    public WarehouseLocation getLocation(final UUID id) {
+        authorization.require(EnterpriseStructurePermissions.LOCATION_READ);
+        return location(id);
     }
 
     @Transactional(readOnly = true)

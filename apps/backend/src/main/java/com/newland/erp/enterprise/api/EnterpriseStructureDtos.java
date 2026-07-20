@@ -205,7 +205,7 @@ public final class EnterpriseStructureDtos {
             return new CompanyResponse(company.id(), company.enterpriseId(), company.legalEntityId(),
                     company.code().value(), company.name().value(), company.localizedName().values(),
                     company.countryCode().value(), company.baseCurrency().value(), company.timeZoneId().value(),
-                    address(company), company.status().name(), company.audit().version());
+                    EnterpriseStructureDtos.address(company), company.status().name(), company.audit().version());
         }
     }
 
@@ -222,8 +222,8 @@ public final class EnterpriseStructureDtos {
     ) {
         public static BranchResponse from(final Branch branch) {
             return new BranchResponse(branch.id(), branch.enterpriseId(), branch.companyId(), branch.code().value(),
-                    branch.name().value(), branch.localizedName().values(), address(branch), branch.status().name(),
-                    branch.audit().version());
+                    branch.name().value(), branch.localizedName().values(), EnterpriseStructureDtos.address(branch),
+                    branch.status().name(), branch.audit().version());
         }
     }
 
@@ -245,7 +245,8 @@ public final class EnterpriseStructureDtos {
             return new WarehouseResponse(warehouse.id(), warehouse.enterpriseId(), warehouse.companyId(),
                     warehouse.branchId(), warehouse.code().value(), warehouse.name().value(),
                     warehouse.localizedName().values(), warehouse.type().name(), warehouse.projectReference(),
-                    address(warehouse), warehouse.status().name(), warehouse.audit().version());
+                    EnterpriseStructureDtos.address(warehouse), warehouse.status().name(),
+                    warehouse.audit().version());
         }
     }
 

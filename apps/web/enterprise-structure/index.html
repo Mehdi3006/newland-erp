@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Newland ERP — Enterprise Structure</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      body {
+        background: #f8fafc;
+        color: #0f172a;
+        margin: 0;
+      }
+
+      main {
+        display: grid;
+        gap: 1rem;
+        margin: 0 auto;
+        max-width: 72rem;
+        padding: 2rem;
+      }
+
+      header,
+      section,
+      nav {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1rem;
+      }
+
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      a,
+      button {
+        border-radius: 0.625rem;
+        font: inherit;
+      }
+
+      a {
+        color: #0f766e;
+        font-weight: 650;
+        text-decoration: none;
+      }
+
+      button {
+        background: #0f766e;
+        border: 0;
+        color: #ffffff;
+        cursor: pointer;
+        padding: 0.625rem 0.875rem;
+      }
+
+      button.secondary {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+
+      label {
+        display: grid;
+        font-weight: 650;
+        gap: 0.35rem;
+      }
+
+      input,
+      select {
+        border: 1px solid #cbd5e1;
+        border-radius: 0.625rem;
+        font: inherit;
+        padding: 0.625rem;
+      }
+
+      .filters,
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .empty-state {
+        border: 1px dashed #94a3b8;
+        border-radius: 0.75rem;
+        color: #475569;
+        padding: 1rem;
+      }
+
+      .hierarchy {
+        display: grid;
+        gap: 0.5rem;
+        list-style-position: inside;
+        padding: 0;
+      }
+
+      [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p id="phase">P3.1 Enterprise Structure</p>
+        <h1 data-i18n="title">Enterprise Structure Administration</h1>
+        <p data-i18n="summary">
+          Manage enterprise, legal entity, company, branch, warehouse, zone, and location structure
+          after backend authorization is approved.
+        </p>
+        <button id="language-toggle" class="secondary" type="button">فارسی / RTL</button>
+      </header>
+
+      <nav aria-label="Enterprise Structure routes">
+        <a href="#list">List</a>
+        <a href="#create">Create</a>
+        <a href="#detail">Detail</a>
+        <a href="#edit">Edit</a>
+      </nav>
+
+      <section aria-label="Hierarchy navigation">
+        <h2>Approved P3.1 hierarchy</h2>
+        <ol class="hierarchy">
+          <li>Enterprise</li>
+          <li>Legal entity</li>
+          <li>Company</li>
+          <li>Branch</li>
+          <li>Warehouse</li>
+          <li>Warehouse zone</li>
+          <li>Warehouse location</li>
+        </ol>
+      </section>
+
+      <section id="list" data-route>
+        <h2>Enterprise Structure list</h2>
+        <div class="filters" aria-label="List filters">
+          <label>
+            Code or name search
+            <input id="search" type="search" placeholder="Search by code or name" />
+          </label>
+          <label>
+            Status
+            <select id="status-filter">
+              <option value="">All statuses</option>
+              <option value="DRAFT">Draft</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </select>
+          </label>
+        </div>
+        <p id="loading-state" role="status" hidden>Loading enterprise structure records…</p>
+        <p id="error-state" role="alert" hidden>
+          Enterprise structure records could not be loaded.
+        </p>
+        <p class="empty-state">No enterprise structure records exist yet.</p>
+      </section>
+
+      <section id="create" data-route hidden>
+        <h2>Create enterprise structure node</h2>
+        <p>
+          No fake business data is prefilled. Future API integration must submit explicit user
+          input.
+        </p>
+      </section>
+
+      <section id="detail" data-route hidden>
+        <h2>Enterprise structure detail</h2>
+        <p>Select a record from the list to inspect hierarchy, lifecycle status, and version.</p>
+      </section>
+
+      <section id="edit" data-route hidden>
+        <h2>Edit enterprise structure node</h2>
+        <p>
+          Optimistic-lock conflicts must be shown before overwriting another user&apos;s change.
+        </p>
+        <p id="optimistic-conflict-state" role="alert" hidden>
+          Optimistic-lock conflict: reload the record before saving.
+        </p>
+        <div class="actions">
+          <button id="deactivate-button" type="button">Open deactivation confirmation</button>
+          <button id="conflict-button" class="secondary" type="button">
+            Simulate optimistic-lock conflict
+          </button>
+        </div>
+        <p id="deactivation-confirmation" role="alert" hidden>
+          Deactivation requires confirmation and active-child checks from the backend.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const routes = [...document.querySelectorAll('[data-route]')];
+      const translations = {
+        en: {
+          title: 'Enterprise Structure Administration',
+          summary:
+            'Manage enterprise, legal entity, company, branch, warehouse, zone, and location structure after backend authorization is approved.',
+        },
+        fa: {
+          title: 'مدیریت ساختار سازمانی',
+          summary:
+            'ساختار شرکت، شخصیت حقوقی، شعبه، انبار، ناحیه و موقعیت را پس از تأیید مجوزهای سمت سرور مدیریت کنید.',
+        },
+      };
+
+      function showRoute() {
+        const selected = window.location.hash.replace('#', '') || 'list';
+        for (const route of routes) {
+          route.hidden = route.id !== selected;
+        }
+      }
+
+      function setLanguage(language) {
+        document.documentElement.lang = language;
+        document.documentElement.dir = language === 'fa' ? 'rtl' : 'ltr';
+        for (const [key, value] of Object.entries(translations[language])) {
+          document.querySelector(`[data-i18n="${key}"]`).textContent = value;
+        }
+      }
+
+      document.getElementById('language-toggle').addEventListener('click', () => {
+        setLanguage(document.documentElement.lang === 'fa' ? 'en' : 'fa');
+      });
+      document.getElementById('deactivate-button').addEventListener('click', () => {
+        document.getElementById('deactivation-confirmation').hidden = false;
+      });
+      document.getElementById('conflict-button').addEventListener('click', () => {
+        document.getElementById('optimistic-conflict-state').hidden = false;
+      });
+      window.addEventListener('hashchange', showRoute);
+      showRoute();
+    </script>
+  </body>
+</html>

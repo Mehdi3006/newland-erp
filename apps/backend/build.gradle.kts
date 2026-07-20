@@ -6,6 +6,9 @@ plugins {
 description = "Newland ERP backend modular monolith"
 
 dependencies {
+    implementation(platform(libs.spring.boot.dependencies))
+    testImplementation(platform(libs.spring.boot.dependencies))
+
     implementation(libs.spring.modulith.starter.core)
     implementation(libs.springdoc.openapi.webmvc)
     implementation("org.springframework.boot:spring-boot-starter-actuator")

@@ -6,6 +6,7 @@
   "include": [
     "eslint.config.mjs",
     "playwright.config.ts",
+    "tests/e2e/**/*.ts",
     "tools/**/*.mjs",
     "tools/**/*.ts",
     "vitest.config.ts"

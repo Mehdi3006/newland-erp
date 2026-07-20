@@ -6,6 +6,7 @@ import org.gradle.api.tasks.testing.Test
 plugins {
     base
     alias(libs.plugins.cyclonedx)
+    alias(libs.plugins.gradle.versions)
     alias(libs.plugins.spotless)
 }
 
@@ -103,9 +104,17 @@ spotless {
     }
 }
 
+tasks.matching { it.name == "cyclonedxBom" }.configureEach {
+    notCompatibleWithConfigurationCache("CycloneDX resolves Maven POM metadata during SBOM generation.")
+}
+
+tasks.matching { it.name == "dependencyUpdates" }.configureEach {
+    notCompatibleWithConfigurationCache("Dependency update reports inspect resolved configurations at execution time.")
+}
+
 val architectureCheck by tasks.registering(Exec::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Verifies required foundation files and Phase P1 boundaries."
+    description = "Verifies required foundation files and approved repository boundaries."
     commandLine("node", "tools/architecture/verify.mjs")
 }
 

@@ -24,16 +24,23 @@ public record Branch(
         Enterprise.require(audit, "branch audit");
     }
 
-    public Branch update(final DisplayName newName, final LocalizedName newLocalizedName, final Address newAddress,
-            final AuditMetadata nextAudit) {
-        return new Branch(id, enterpriseId, companyId, code, newName, newLocalizedName, newAddress, status, nextAudit);
+    public Branch update(
+            final DisplayName newName,
+            final LocalizedName newLocalizedName,
+            final Address newAddress,
+            final AuditMetadata nextAudit
+    ) {
+        return new Branch(id, enterpriseId, companyId, code, newName, newLocalizedName, newAddress, status,
+                nextAudit);
     }
 
     public Branch activate(final AuditMetadata nextAudit) {
-        return new Branch(id, enterpriseId, companyId, code, name, localizedName, address, status.activate(), nextAudit);
+        return new Branch(id, enterpriseId, companyId, code, name, localizedName, address, status.activate(),
+                nextAudit);
     }
 
     public Branch deactivate(final AuditMetadata nextAudit) {
-        return new Branch(id, enterpriseId, companyId, code, name, localizedName, address, status.deactivate(), nextAudit);
+        return new Branch(id, enterpriseId, companyId, code, name, localizedName, address, status.deactivate(),
+                nextAudit);
     }
 }

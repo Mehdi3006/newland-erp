@@ -8,6 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   testDir: 'tests/e2e',
   use: {
+    channel: 'chrome',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },

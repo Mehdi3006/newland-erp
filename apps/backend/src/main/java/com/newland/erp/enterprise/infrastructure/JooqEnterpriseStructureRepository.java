@@ -51,9 +51,9 @@ public final class JooqEnterpriseStructureRepository implements EnterpriseStruct
     private final DSLContext dsl;
     private final ObjectMapper objectMapper;
 
-    public JooqEnterpriseStructureRepository(final DSLContext dsl, final ObjectMapper objectMapper) {
-        this.dsl = dsl;
-        this.objectMapper = objectMapper;
+    public JooqEnterpriseStructureRepository(final DSLContext dslContext, final ObjectMapper jsonMapper) {
+        this.dsl = dslContext;
+        this.objectMapper = jsonMapper;
     }
 
     @Override
