@@ -9,6 +9,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.1 Enterprise Structure foundation for enterprise, legal entity, company, branch,
+  warehouse, zone, and location lifecycle management.
+- Versioned Enterprise Structure REST API, Problem Details error handling, OpenAPI grouping, and
+  static API contract page.
+- Flyway migration, jOOQ repository, Spring Modulith boundary verification, ArchUnit checks,
+  PostgreSQL Testcontainers coverage, and frontend contract tests for P3.1.
 - Phase P2 business architecture documentation baseline.
 - Capability map, bounded contexts, context map, master-data architecture, process maps, event
   catalog, permission model, numbering and status architecture, reporting map, integration map, and

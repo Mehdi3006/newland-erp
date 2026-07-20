@@ -1,5 +1,9 @@
 import org.gradle.api.initialization.resolve.RepositoriesMode
 
+if (gradle.startParameter.taskNames.contains("dependencyUpdates")) {
+    gradle.startParameter.isParallelProjectExecutionEnabled = false
+}
+
 pluginManagement {
     repositories {
         gradlePluginPortal()
@@ -20,5 +24,4 @@ dependencyResolutionManagement {
     }
 }
 
-// Runtime projects are deliberately absent in Phase P1. A future module must
-// be explicitly included here after its architecture decision is accepted.
+include("apps:backend")

@@ -16,11 +16,12 @@
 
 ## Technical Open Issues
 
-- No runtime architecture is approved for P3 implementation yet.
-- No database engine or migration strategy is approved for ERP modules.
-- No API transport is approved for ERP modules.
-- No frontend implementation is approved.
-- No event transport is approved.
+- P3.1 Enterprise Structure is under PR review and is not approved until explicitly accepted.
+- P3.2 Identity and Access has not started.
+- Production authentication, user identity source, and permission assignment remain open for P3.2.
+- Event transport remains in-process only for P3.1; durable outbox/integration transport is
+  deferred.
+- List endpoints do not yet provide enterprise-grade pagination/filtering contracts.
 
 ## Resolved in This Phase
 
@@ -28,3 +29,5 @@
 - Bounded-context inventory established.
 - Context ownership and event language established.
 - P3.1 recommended scope identified.
+- P2 Business Architecture approved.
+- P3.1 Enterprise Structure foundation implemented for review in PR #11.
