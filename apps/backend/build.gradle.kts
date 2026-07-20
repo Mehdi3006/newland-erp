@@ -17,6 +17,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation(libs.flyway.core)
+    implementation(libs.flyway.database.postgresql)
     implementation(libs.jooq)
     runtimeOnly(libs.postgresql)
 
