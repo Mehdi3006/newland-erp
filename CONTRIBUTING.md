@@ -1,7 +1,9 @@
 # Contributing to Newland ERP
 
-Newland ERP is developed through reviewed, traceable changes. The repository is currently in Phase
-P1; business modules and runtime applications require a separate architectural approval.
+Newland ERP is developed through reviewed, traceable changes. Phase P1 Repository Foundation is
+complete, approved, closed, and frozen. Phase P2 Business Architecture documentation exists and is
+under architectural review. Runtime business modules and applications still require explicit
+architectural approval. P3 implementation must not begin until P2 is approved.
 
 ## Before starting
 
