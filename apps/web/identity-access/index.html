@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Newland ERP Identity & Access</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        --accent: #315efb;
+        --surface: #f7f8fb;
+        --border: #d8deea;
+      }
+
+      body {
+        margin: 0;
+        background: var(--surface);
+        color: #111827;
+      }
+
+      [dir='rtl'] body {
+        font-family:
+          Vazirmatn,
+          Tahoma,
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      header,
+      main {
+        margin: auto;
+        max-width: 1180px;
+        padding: 1.5rem;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      nav,
+      .grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      a,
+      button {
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        background: white;
+        color: #111827;
+        padding: 0.85rem 1rem;
+        text-align: start;
+        text-decoration: none;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      section {
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        background: white;
+        padding: 1.25rem;
+      }
+
+      h1,
+      h2 {
+        margin-block-start: 0;
+      }
+
+      code {
+        border-radius: 0.35rem;
+        background: #eef2ff;
+        padding: 0.15rem 0.35rem;
+      }
+
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 0.2rem 0.65rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <span class="badge">P3.2 Identity & Access</span>
+        <h1>Identity administration</h1>
+        <p>
+          Contract-first administration surface for authentication, authorization, scoped roles,
+          sessions, and password operations.
+        </p>
+      </div>
+      <button id="direction-toggle" type="button">RTL / LTR</button>
+    </header>
+
+    <main>
+      <nav aria-label="Identity pages">
+        <a href="#login">Login</a>
+        <a href="#users">Users</a>
+        <a href="#roles">Roles</a>
+        <a href="#permissions">Permissions</a>
+        <a href="#assignments">Assignments</a>
+        <a href="#profile">Profile</a>
+        <a href="#sessions">Sessions</a>
+        <a href="#change-password">Change Password</a>
+      </nav>
+
+      <div class="grid" style="margin-top: 1rem">
+        <section id="login">
+          <h2>Login</h2>
+          <p>Uses <code>/api/v1/auth/login</code> for JWT access tokens and refresh tokens.</p>
+        </section>
+        <section id="users">
+          <h2>Users</h2>
+          <p>Create, update, read, and list IAM users. No employee or HR data is modeled here.</p>
+        </section>
+        <section id="roles">
+          <h2>Roles</h2>
+          <p>Roles are capability containers, not hardcoded administrator switches.</p>
+        </section>
+        <section id="permissions">
+          <h2>Permissions</h2>
+          <p>Capabilities use dotted names such as <code>identity.user.manage</code>.</p>
+        </section>
+        <section id="assignments">
+          <h2>Assignments</h2>
+          <p>
+            User-role assignments include enterprise, legal-entity, company, branch, or warehouse
+            scope.
+          </p>
+        </section>
+        <section id="profile">
+          <h2>Profile</h2>
+          <p>Current-user profile and account metadata contract placeholder.</p>
+        </section>
+        <section id="sessions">
+          <h2>Sessions</h2>
+          <p>Session list supports revocation and device tracking readiness.</p>
+        </section>
+        <section id="change-password">
+          <h2>Change Password</h2>
+          <p>Passwords are validated by policy and stored only as Argon2id hashes.</p>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      document.getElementById('direction-toggle').addEventListener('click', () => {
+        const html = document.documentElement;
+        html.dir = html.dir === 'rtl' ? 'ltr' : 'rtl';
+        html.lang = html.dir === 'rtl' ? 'fa' : 'en';
+      });
+    </script>
+  </body>
+</html>

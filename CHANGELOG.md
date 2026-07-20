@@ -9,6 +9,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.2 Identity and Access foundation for users, roles, permissions, scoped assignments,
+  sessions, refresh tokens, password credentials, and capability decisions.
+- Spring Security integration, JWT access-token issuance, refresh-token rotation, Argon2 password
+  hashing, account-lock policy, password-change flow, and session revocation.
+- Versioned Identity REST APIs under `/api/v1/auth`, `/api/v1/identity`, and
+  `/api/v1/access-control`, plus RFC 9457 Problem Details handling and OpenAPI grouping.
+- IAM-only Flyway migration, jOOQ repository, Spring Modulith boundary verification, ArchUnit
+  checks, PostgreSQL Testcontainers coverage, and frontend contract tests for P3.2.
+- Static Identity and Access administration page covering login, users, roles, permissions,
+  assignments, profile, sessions, and change password with RTL/LTR readiness.
 - Phase P3.1 Enterprise Structure foundation for enterprise, legal entity, company, branch,
   warehouse, zone, and location lifecycle management.
 - Versioned Enterprise Structure REST API, Problem Details error handling, OpenAPI grouping, and
