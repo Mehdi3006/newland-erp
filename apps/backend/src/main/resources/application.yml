@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: newland-erp-backend
+  datasource:
+    url: ${NEWLAND_DB_URL:jdbc:postgresql://localhost:5432/newland_erp}
+    username: ${NEWLAND_DB_USERNAME:newland}
+    password: ${NEWLAND_DB_PASSWORD:newland}
+  flyway:
+    locations: classpath:db/migration
+  jooq:
+    sql-dialect: postgres
+
+server:
+  error:
+    include-message: never
