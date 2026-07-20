@@ -69,17 +69,25 @@ const approvedBackendFiles = new Set([
   'apps/backend/gradle.lockfile',
   'apps/backend/src/main/java/com/newland/erp/NewlandErpApplication.java',
   'apps/backend/src/main/java/com/newland/erp/enterprise/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/identity/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
   'apps/backend/src/main/resources/application.yml',
   'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V2__identity_access_foundation.sql',
 ]);
-const approvedFrontendFiles = new Set(['apps/web/enterprise-structure/index.html']);
+const approvedFrontendFiles = new Set([
+  'apps/web/enterprise-structure/index.html',
+  'apps/web/identity-access/index.html',
+]);
 const approvedBackendJavaRoots = [
   'apps/backend/src/main/java/com/newland/erp/enterprise/',
   'apps/backend/src/test/java/com/newland/erp/enterprise/',
+  'apps/backend/src/main/java/com/newland/erp/identity/',
+  'apps/backend/src/test/java/com/newland/erp/identity/',
 ];
 const approvedBackendResourceRoots = ['apps/backend/src/test/resources/'];
-const approvedEnterpriseLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
+const approvedBoundedContextLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
 const generatedOrExternalDirectories = [
   '.gradle/',
   'build/',
@@ -97,6 +105,16 @@ const approvedEnterpriseTables = new Set([
   'warehouse_zone',
   'warehouse_location',
 ]);
+const approvedIdentityTables = new Set([
+  'iam_user',
+  'iam_role',
+  'iam_permission',
+  'iam_user_role_assignment',
+  'iam_role_permission_assignment',
+  'iam_password_credential',
+  'iam_session',
+  'iam_refresh_token',
+]);
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -105,6 +123,13 @@ async function walk(directory) {
   for (const entry of entries) {
     const path = resolve(directory, entry.name);
     if (entry.isDirectory()) {
+      const normalizedPath = relative(
+        resolve(fileURLToPath(new URL('../..', import.meta.url))),
+        path,
+      ).replaceAll('\\', '/');
+      if (isGeneratedOrExternalPath(`${normalizedPath}/`)) {
+        continue;
+      }
       paths.push(...(await walk(path)));
     } else if (entry.isFile()) {
       paths.push(path);
@@ -157,9 +182,9 @@ export function classifyRepositoryPathViolation(repositoryPath) {
     if (!normalizedPath.endsWith('.java')) {
       return `approved backend Java roots may contain only Java source: ${normalizedPath}`;
     }
-    const layer = enterpriseLayer(normalizedPath);
+    const layer = boundedContextLayer(normalizedPath);
     if (!layer) {
-      return `enterprise backend source must be inside an approved layer: ${normalizedPath}`;
+      return `backend bounded-context source must be inside an approved layer: ${normalizedPath}`;
     }
     return undefined;
   }
@@ -181,15 +206,26 @@ export function classifyP1Violation(repositoryPath) {
   return classifyRepositoryPathViolation(repositoryPath);
 }
 
-function enterpriseLayer(normalizedPath) {
-  const marker = '/com/newland/erp/enterprise/';
+function boundedContextName(normalizedPath) {
+  const marker = '/com/newland/erp/';
   const markerIndex = normalizedPath.indexOf(marker);
   if (markerIndex === -1) {
     return undefined;
   }
-  const afterMarker = normalizedPath.slice(markerIndex + marker.length);
+  return normalizedPath.slice(markerIndex + marker.length).split('/')[0];
+}
+
+function boundedContextLayer(normalizedPath) {
+  const marker = '/com/newland/erp/enterprise/';
+  const identityMarker = '/com/newland/erp/identity/';
+  const activeMarker = normalizedPath.includes(marker) ? marker : identityMarker;
+  const markerIndex = normalizedPath.indexOf(activeMarker);
+  if (markerIndex === -1 || !normalizedPath.includes(activeMarker)) {
+    return undefined;
+  }
+  const afterMarker = normalizedPath.slice(markerIndex + activeMarker.length);
   const layer = afterMarker.split('/')[0];
-  return approvedEnterpriseLayers.has(layer) ? layer : undefined;
+  return approvedBoundedContextLayers.has(layer) ? layer : undefined;
 }
 
 export function classifyJavaBoundaryViolation(repositoryPath, source) {
@@ -204,19 +240,22 @@ export function classifyJavaBoundaryViolation(repositoryPath, source) {
     .some(
       (line) =>
         line.startsWith('import com.newland.erp.') &&
-        !line.startsWith('import com.newland.erp.enterprise.') &&
+        !line.startsWith(`import com.newland.erp.${boundedContextName(normalizedPath)}.`) &&
         !line.startsWith('import com.newland.erp.NewlandErpApplication;'),
     );
 
   if (importsAnotherBoundedContext) {
-    return `enterprise backend must not depend on another bounded context: ${normalizedPath}`;
+    return `backend bounded context must not depend on another bounded context: ${normalizedPath}`;
   }
 
-  const layer = enterpriseLayer(normalizedPath);
+  const layer = boundedContextLayer(normalizedPath);
+  const context = boundedContextName(normalizedPath);
   if (layer === 'domain') {
     if (
       source.match(
-        /import (com\.newland\.erp\.enterprise\.(api|application|infrastructure)|jakarta\.|org\.jooq\.|org\.springframework\.)/,
+        new RegExp(
+          `import (com\\.newland\\.erp\\.${context}\\.(api|application|infrastructure)|jakarta\\.|org\\.jooq\\.|org\\.springframework\\.)`,
+        ),
       )
     ) {
       return `domain layer must not depend on application, API, infrastructure, or framework code: ${normalizedPath}`;
@@ -224,21 +263,31 @@ export function classifyJavaBoundaryViolation(repositoryPath, source) {
   }
 
   if (layer === 'application') {
-    if (source.match(/import (com\.newland\.erp\.enterprise\.(api|infrastructure)|org\.jooq\.)/)) {
+    if (
+      source.match(
+        new RegExp(
+          `import (com\\.newland\\.erp\\.${context}\\.(api|infrastructure)|org\\.jooq\\.)`,
+        ),
+      )
+    ) {
       return `application layer must not depend on API, infrastructure, or persistence code: ${normalizedPath}`;
     }
   }
 
   if (layer === 'api') {
-    if (source.match(/import (com\.newland\.erp\.enterprise\.infrastructure|org\.jooq\.)/)) {
+    if (
+      source.match(
+        new RegExp(`import (com\\.newland\\.erp\\.${context}\\.infrastructure|org\\.jooq\\.)`),
+      )
+    ) {
       return `API layer must not depend on infrastructure or persistence code: ${normalizedPath}`;
     }
-    if (!isTestSource && source.includes('EnterpriseStructureRepository')) {
+    if (!isTestSource && source.match(/(EnterpriseStructureRepository|IdentityRepository)/)) {
       return `API layer must use application services instead of repositories: ${normalizedPath}`;
     }
   }
 
-  if (layer === 'infrastructure' && source.includes('import com.newland.erp.enterprise.api.')) {
+  if (layer === 'infrastructure' && source.includes(`import com.newland.erp.${context}.api.`)) {
     return `infrastructure layer must not depend on API code: ${normalizedPath}`;
   }
 
@@ -255,8 +304,8 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
     /\b(?:CREATE|ALTER)\s+TABLE\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?(?:"?([a-z][a-z0-9_]*)"?)/giu;
   for (const match of source.matchAll(tablePattern)) {
     const tableName = match[1];
-    if (!approvedEnterpriseTables.has(tableName)) {
-      return `enterprise migration may only define approved P3.1 tables: ${normalizedPath} (${tableName})`;
+    if (!approvedEnterpriseTables.has(tableName) && !approvedIdentityTables.has(tableName)) {
+      return `ERP migrations may only define approved P3.1/P3.2 tables: ${normalizedPath} (${tableName})`;
     }
   }
 
@@ -310,7 +359,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved P3.1 Enterprise Structure boundaries are intact.',
+    'Architecture verification passed: approved P3.1/P3.2 bounded-context boundaries are intact.',
   );
 }
 

@@ -1,36 +1,43 @@
 # Next Codex Task
 
-## Recommended Task: Complete P3.1 Enterprise Structure Review
+## Recommended Task: Complete P3.2 Identity and Access Review
 
-P2 is approved. P3.1 implementation exists in PR #11 and must receive explicit architectural
-approval before any P3.2 work begins.
+P3.1 is approved and merged. P3.2 implementation exists on branch `codex/p3-2-identity-access` and
+must receive explicit architectural approval before any Inventory or other business-module work
+begins.
 
-The next task is final review, validation, and approval handling for Enterprise Structure only.
+The next task is final review, validation, and approval handling for Identity and Access only.
 
-## P3.1 Scope
+## P3.2 Scope
 
 Review and validate implementation for:
 
-- Enterprise.
-- Legal Entity.
-- Company.
-- Branch.
-- Warehouse.
-- Zone.
-- Location.
+- Users.
+- Roles.
+- Permissions and capabilities.
+- User-role assignment.
+- Role-permission assignment.
+- Organization scopes.
+- Authentication.
+- JWT access tokens.
+- Refresh-token rotation.
+- Password management.
+- Sessions and revocation.
+- Identity administration UI.
 
-## P3.1 Rules
+## P3.2 Rules
 
-- Do not add project, department, cost center, profit center, sales region, or service center
-  implementation without a separate approved phase.
-- Do not implement Product, Inventory, Procurement, Sales, Accounting, CRM, Service, HR, Payroll,
-  Reporting, Integration, or AI in P3.1.
-- Do not begin P3.2 Identity and Access before P3.1 approval.
+- Do not implement Inventory, Product, Procurement, Sales, Accounting, CRM, HR, Payroll, Reporting,
+  Workflow, Integration, or AI in P3.2.
+- Do not model employees or HR records in Identity and Access.
+- Do not begin Inventory before P3.2 approval.
 
-## P3.1 Acceptance Draft
+## P3.2 Acceptance Draft
 
-- Enterprise Structure aggregate model passes review.
-- Activation/deactivation state model passes review.
-- API error semantics, permission checks, persistence, migrations, and tests pass quality gates.
-- Project and advanced scope implementation explicitly deferred.
-- No business modules outside Enterprise Structure implemented.
+- Identity and Access aggregate model passes review.
+- Authentication and refresh-token rotation pass review.
+- Capability and organization-scope authorization pass review.
+- Password hashing, password policy, account lock, and session revocation pass review.
+- API, persistence, migrations, architecture checks, security checks, and UI contract tests pass
+  quality gates.
+- No business modules outside Identity and Access implemented.
