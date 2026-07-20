@@ -38,6 +38,7 @@ import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -571,8 +572,8 @@ public final class JooqEnterpriseStructureRepository implements EnterpriseStruct
     }
 
     private AuditMetadata audit(final Record record) {
-        return new AuditMetadata(record.get(instant("created_at")), record.get(text("created_by")),
-                record.get(instant("updated_at")), record.get(text("updated_by")), record.get(version()));
+        return new AuditMetadata(auditInstant(record, "created_at"), record.get(text("created_by")),
+                auditInstant(record, "updated_at"), record.get(text("updated_by")), record.get(version()));
     }
 
     private Address address(final Record record) {
@@ -628,6 +629,18 @@ public final class JooqEnterpriseStructureRepository implements EnterpriseStruct
 
     private static Field<Instant> instant(final String name) {
         return DSL.field(DSL.name(name), Instant.class);
+    }
+
+    private static Instant auditInstant(final Record record, final String name) {
+        final Object value = record.get(DSL.field(DSL.name(name)));
+        if (value instanceof Instant instant) {
+            return instant;
+        }
+        if (value instanceof OffsetDateTime offsetDateTime) {
+            return offsetDateTime.toInstant();
+        }
+        throw new IllegalStateException("Unsupported timestamp value for " + name + ": "
+                + value.getClass().getName());
     }
 
     private static Field<Long> version() {
