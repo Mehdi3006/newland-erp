@@ -4,7 +4,7 @@ This registry tracks business architecture readiness. It is not a code module re
 
 | Module / context               | P2 business architecture | Implementation status | Notes                                                |
 | ------------------------------ | ------------------------ | --------------------- | ---------------------------------------------------- |
-| Enterprise Structure           | Defined                  | Not started           | Recommended P3.1 starting scope.                     |
+| Enterprise Structure           | Defined                  | P3.1 PR review        | Foundation implemented in PR #11; pending approval.  |
 | Identity and Access            | Defined                  | Not started           | Requires auth decisions.                             |
 | Product Information Management | Defined                  | Not started           | Requires SKU and traceability decisions.             |
 | Inventory                      | Defined                  | Not started           | Requires valuation and negative-stock decisions.     |

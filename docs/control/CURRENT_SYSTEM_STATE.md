@@ -1,22 +1,28 @@
 # Current System State
 
-Status: Phase P2 business architecture draft on branch `codex/p2-business-architecture`.
+Status: Phase P3.1 Enterprise Structure implementation review on branch
+`codex/p3-1-enterprise-structure`.
 
 ## Phase State
 
 - P1 Repository Foundation is approved, closed, and frozen.
-- P2 Business Architecture is documentation-only.
-- Runtime implementation has not started.
-- No backend code is approved in this phase.
-- No frontend code is approved in this phase.
-- No database migrations are approved in this phase.
-- No APIs, dashboards, pages, workflows, or fake operational data are approved in this phase.
+- P2 Business Architecture is approved, closed, and frozen.
+- P3.1 Enterprise Structure implementation is present in PR #11 and remains under quality and
+  architecture review until explicitly approved.
+- P3.2 Identity and Access has not started and must not begin until P3.1 is approved.
 
 ## Current Repository Content
 
 - Repository foundation documents and tooling from P1.
 - Business architecture documentation under `docs/business-architecture`.
 - Control documents under `docs/control`.
+- Enterprise Structure backend slice for P3.1 under
+  `apps/backend/src/main/java/com/newland/erp/enterprise`.
+- Enterprise Structure Flyway foundation migration under
+  `apps/backend/src/main/resources/db/migration`.
+- Enterprise Structure API and persistence tests under
+  `apps/backend/src/test/java/com/newland/erp/enterprise`.
+- Static Enterprise Structure API contract page under `apps/web/enterprise-structure`.
 
 ## Current Business Architecture Baseline
 
@@ -35,4 +41,7 @@ Status: Phase P2 business architecture draft on branch `codex/p2-business-archit
 
 ## Implementation State
 
-No ERP implementation exists. P3.1 must start only after P2 approval.
+P3.1 contains only the Enterprise Structure foundation: enterprise, legal entity, company, branch,
+warehouse, zone, and location model/API/persistence foundations. No Product, Inventory, Procurement,
+Sales, CRM, Accounting, HR, Payroll, Reporting, Integration, dashboard, fake operational data, or
+P3.2 Identity and Access implementation exists in this branch.

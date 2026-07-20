@@ -33,19 +33,15 @@ public final class EnterpriseStructureProblemHandler {
                 "permission-denied");
     }
 
-    @ExceptionHandler({DuplicateBusinessCodeException.class, OptimisticLockConflictException.class})
-    public ProblemDetail conflict(final EnterpriseStructureException exception) {
-        return problem(HttpStatus.CONFLICT, "Enterprise Structure conflict", exception.getMessage(), "conflict");
-    }
-
     @ExceptionHandler({
+        DuplicateBusinessCodeException.class,
         InactiveParentException.class,
         InvalidStateTransitionException.class,
+        OptimisticLockConflictException.class,
         ReferencedByActiveChildrenException.class,
     })
-    public ProblemDetail unprocessable(final EnterpriseStructureException exception) {
-        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Enterprise Structure rule violation", exception.getMessage(),
-                "rule-violation");
+    public ProblemDetail conflict(final EnterpriseStructureException exception) {
+        return problem(HttpStatus.CONFLICT, "Enterprise Structure conflict", exception.getMessage(), "conflict");
     }
 
     @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class})
