@@ -1,6 +1,6 @@
 # Current System State
 
-Status: Phase P3.6 Sales Foundation implementation on branch `codex/p3-6-sales-foundation`.
+Status: Phase P3.6 Sales Foundation is approved, merged, and part of `main`.
 
 ## Phase State
 
@@ -13,8 +13,7 @@ Status: Phase P3.6 Sales Foundation implementation on branch `codex/p3-6-sales-f
 - P3.3.5 Shared Product Catalog is approved, merged, and part of `main`.
 - P3.4 Inventory Foundation is approved, merged, and part of `main`.
 - P3.5 Procurement Foundation is approved, merged, and part of `main`.
-- P3.6 Sales Foundation implementation is present on this branch and remains under quality and
-  architecture review until explicitly approved.
+- P3.6 Sales Foundation is approved, merged, and part of `main`.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
@@ -90,4 +89,5 @@ master-data/catalog/enterprise/identity reuse through ports, audit, attachments,
 domain-event integration. No Accounts Receivable, accounting journal entry, customer payment, credit
 collection, pricing engine, discount engine, direct inventory balance mutation, delivery execution,
 stock issue posting, invoicing, CRM campaign, manufacturing, HR, forecasting, automated
-replenishment, fake operational data, or unrelated ERP implementation exists in this branch.
+replenishment, fake operational data, or unrelated ERP implementation exists. P3.6 Sales Foundation
+is complete.

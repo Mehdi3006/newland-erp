@@ -1,15 +1,15 @@
 # Next Codex Task
 
-## Recommended Task: Complete P3.6 Sales Foundation Implementation and Review
+## Recommended Task: Await Explicit Approval for the Next Phase
 
-P3.5 Procurement Foundation is approved and merged. P3.6 implementation exists on branch
-`codex/p3-6-sales-foundation` and must receive explicit architectural approval before any Accounts
-Receivable, Accounting, customer payment, Pricing, Discount, CRM, HR, Manufacturing, Forecasting,
-Automated Replenishment, or adjacent operational ERP module work begins.
+P3.6 Sales Foundation is approved, merged, and complete. No subsequent phase may begin until it
+receives explicit architectural approval. Accounts Receivable, Accounting, customer payment,
+Pricing, Discount, CRM, HR, Manufacturing, Forecasting, Automated Replenishment, and adjacent
+operational ERP module work remain out of scope.
 
-The next task is implementation, validation, and approval handling for Sales Foundation only.
+The next task is to await an explicit phase approval; do not start implementation.
 
-## P3.6 Scope
+## Completed P3.6 Scope
 
 Review and validate implementation for:
 
@@ -22,7 +22,7 @@ Review and validate implementation for:
   attachments, number series, and explicit Inventory availability/reservation/delivery-request port
   reuse.
 
-## P3.6 Rules
+## P3.6 Release Boundaries
 
 - Do not implement Accounts Receivable, accounting journal entries, customer payments, credit
   collection, pricing engine, discount engine, direct inventory balance mutation, delivery
@@ -30,12 +30,13 @@ Review and validate implementation for:
   automated replenishment.
 - Keep Sales behind domain, application, API, and infrastructure layers.
 - Keep persistence limited to approved Sales tables.
-- Do not begin Accounts Receivable, Accounting, Pricing, CRM, or any next phase before P3.6
-  approval.
+- Do not begin Accounts Receivable, Accounting, Pricing, CRM, or any next phase without explicit
+  architectural approval.
 
-## P3.6 Acceptance Draft
+## P3.6 Completion Record
 
 - Sales domain model, repository port, repository adapter, service, REST API, DTOs, validation,
-  Flyway migration, unit tests, integration tests, and architecture tests pass review.
-- API, persistence, migrations, architecture checks, security checks, and tests pass quality gates.
-- No operational business modules implemented.
+  Flyway migration, unit tests, integration tests, and architecture tests passed review.
+- API, persistence, migrations, architecture checks, security checks, and tests passed quality
+  gates.
+- No operational business modules beyond the approved Sales Foundation were implemented.
