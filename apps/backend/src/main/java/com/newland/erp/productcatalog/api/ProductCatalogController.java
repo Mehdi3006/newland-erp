@@ -37,14 +37,14 @@ public final class ProductCatalogController {
         final UUID transientProductId = UUID.randomUUID();
         return ProductCatalogDtos.ProductResponse.from(service.create(new ProductCatalogCommands.CreateProduct(
                 request.productCode(), request.categoryId(), request.brandId(), request.familyId(),
-                request.skus().stream().map(sku -> sku.toDomain(transientProductId)).toList(),
-                request.packagingLevels().stream().map(ProductCatalogDtos.PackageRequest::toDomain).toList(),
+                list(request.skus()).stream().map(sku -> sku.toDomain(transientProductId)).toList(),
+                list(request.packagingLevels()).stream().map(ProductCatalogDtos.PackageRequest::toDomain).toList(),
                 request.length() == null ? null : request.length().toDomain(),
                 request.width() == null ? null : request.width().toDomain(),
                 request.height() == null ? null : request.height().toDomain(),
                 request.weight() == null ? null : request.weight().toDomain(),
-                request.media().stream().map(ProductCatalogDtos.MediaRequest::toDomain).toList(),
-                request.content().stream().map(ProductCatalogDtos.ContentRequest::toDomain).toList(),
+                list(request.media()).stream().map(ProductCatalogDtos.MediaRequest::toDomain).toList(),
+                list(request.content()).stream().map(ProductCatalogDtos.ContentRequest::toDomain).toList(),
                 request.tags(), request.searchMetadata(), request.warrantyMetadata(), actor)));
     }
 
@@ -66,5 +66,9 @@ public final class ProductCatalogController {
     ) {
         return ProductCatalogDtos.ProductResponse.from(service.changeStatus(new ProductCatalogCommands.ChangeStatus(
                 productId, request.status(), request.expectedVersion(), actor)));
+    }
+
+    private static <T> List<T> list(final List<T> value) {
+        return value == null ? List.of() : value;
     }
 }

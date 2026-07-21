@@ -58,6 +58,29 @@ final class ProductCatalogServiceTest {
     }
 
     @Test
+    void rejectsDuplicateSkuCodesAndTradeIdentifiersWithinSameCommand() {
+        assertThatThrownBy(() -> service.create(new ProductCatalogCommands.CreateProduct("P-200",
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                List.of(new ProductSku(UUID.randomUUID(), UUID.randomUUID(), "SKU-200", null, null, null,
+                                null, "EA", Map.of()),
+                        new ProductSku(UUID.randomUUID(), UUID.randomUUID(), "SKU-200", null, null, null,
+                                null, "EA", Map.of())),
+                List.of(), null, null, null, null, List.of(), List.of(), List.of(), Map.of(), Map.of(),
+                "architect")))
+                .isInstanceOf(DuplicateProductIdentifierException.class);
+
+        assertThatThrownBy(() -> service.create(new ProductCatalogCommands.CreateProduct("P-201",
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                List.of(new ProductSku(UUID.randomUUID(), UUID.randomUUID(), "SKU-201-A", "12345", null,
+                                null, null, "EA", Map.of()),
+                        new ProductSku(UUID.randomUUID(), UUID.randomUUID(), "SKU-201-B", "12345", null,
+                                null, null, "EA", Map.of())),
+                List.of(), null, null, null, null, List.of(), List.of(), List.of(), Map.of(), Map.of(),
+                "architect")))
+                .isInstanceOf(DuplicateProductIdentifierException.class);
+    }
+
+    @Test
     void changesLifecycleStatusWithOptimisticVersion() {
         final var product = service.create(command("P-100", "SKU-100", null, UUID.randomUUID()));
 

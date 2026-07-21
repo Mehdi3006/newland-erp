@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -40,11 +42,19 @@ public final class ProductCatalogService {
         repository.findByProductCode(command.productCode()).ifPresent(product -> {
             throw new DuplicateProductIdentifierException("Product code already exists: " + product.productCode());
         });
+        final Set<String> commandSkuCodes = new HashSet<>();
+        final Set<String> commandTradeIdentifiers = new HashSet<>();
         command.skus().forEach(sku -> {
+            if (!commandSkuCodes.add(sku.skuCode())) {
+                throw new DuplicateProductIdentifierException("SKU code already exists: " + sku.skuCode());
+            }
             if (repository.skuCodeExists(sku.skuCode())) {
                 throw new DuplicateProductIdentifierException("SKU code already exists: " + sku.skuCode());
             }
             for (final String identifier : new String[] {sku.gtin(), sku.ean(), sku.upc(), sku.barcode()}) {
+                if (identifier != null && !commandTradeIdentifiers.add(identifier)) {
+                    throw new DuplicateProductIdentifierException("Product identifier already exists: " + identifier);
+                }
                 if (identifier != null && repository.tradeIdentifierExists(identifier)) {
                     throw new DuplicateProductIdentifierException("Product identifier already exists: " + identifier);
                 }
