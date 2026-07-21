@@ -77,6 +77,7 @@ CREATE TABLE inventory_reservation (
     bin_id uuid,
     quantity numeric(19, 6) NOT NULL,
     uom_code varchar(32) NOT NULL,
+    idempotency_key varchar(160) NOT NULL UNIQUE,
     released boolean NOT NULL,
     created_at timestamptz NOT NULL,
     released_at timestamptz,

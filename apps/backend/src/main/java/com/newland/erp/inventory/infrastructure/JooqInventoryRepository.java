@@ -39,7 +39,8 @@ public final class JooqInventoryRepository implements InventoryRepository {
 
     @Override
     public boolean idempotencyKeyExists(final String idempotencyKey) {
-        return dsl.fetchExists(transactionTable(), text("idempotency_key").eq(idempotencyKey));
+        return dsl.fetchExists(transactionTable(), text("idempotency_key").eq(idempotencyKey))
+                || dsl.fetchExists(table("inventory_reservation"), text("idempotency_key").eq(idempotencyKey));
     }
 
     @Override
@@ -133,12 +134,13 @@ public final class JooqInventoryRepository implements InventoryRepository {
     public Reservation insertReservation(final Reservation reservation) {
         dsl.insertInto(table("inventory_reservation"))
                 .columns(id(), uuid("sku_id"), uuid("warehouse_id"), uuid("zone_id"), uuid("bin_id"),
-                        decimal("quantity"), text("uom_code"), bool("released"), instant("created_at"),
-                        instant("released_at"))
+                        decimal("quantity"), text("uom_code"), text("idempotency_key"), bool("released"),
+                        instant("created_at"), instant("released_at"))
                 .values(reservation.id(), reservation.skuId(), reservation.location().warehouseId(),
                         reservation.location().zoneId(), reservation.location().binId(),
-                        reservation.quantity().value(), reservation.quantity().uomCode(), reservation.released(),
-                        reservation.createdAt(), reservation.releasedAt())
+                        reservation.quantity().value(), reservation.quantity().uomCode(),
+                        reservation.idempotencyKey(), reservation.released(), reservation.createdAt(),
+                        reservation.releasedAt())
                 .execute();
         return reservation;
     }
@@ -211,8 +213,8 @@ public final class JooqInventoryRepository implements InventoryRepository {
                 new InventoryLocation(record.get(uuid("warehouse_id")), record.get(uuid("zone_id")),
                         record.get(uuid("bin_id"))),
                 new InventoryQuantity(record.get(decimal("quantity")), record.get(text("uom_code"))),
-                Boolean.TRUE.equals(record.get(bool("released"))), instantValue(record, "created_at"),
-                instantValue(record, "released_at"));
+                record.get(text("idempotency_key")), Boolean.TRUE.equals(record.get(bool("released"))),
+                instantValue(record, "created_at"), instantValue(record, "released_at"));
     }
 
     private static InventoryLocation location(final Record record, final String prefix) {

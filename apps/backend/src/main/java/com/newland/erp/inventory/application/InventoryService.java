@@ -88,7 +88,8 @@ public final class InventoryService {
             throw new InventoryConflictException("Reservation exceeds available quantity.");
         }
         final Reservation reservation = repository.insertReservation(new Reservation(UUID.randomUUID(),
-                command.item().skuId(), command.location(), command.quantity(), false, Instant.now(clock), null));
+                command.item().skuId(), command.location(), command.quantity(), command.idempotencyKey(), false,
+                Instant.now(clock), null));
         repository.upsertBalance(new StockBalance(balance.id(), balance.skuId(), balance.location(),
                 balance.inventoryStatus(), balance.onHandQuantity(), balance.reservedQuantity().add(command.quantity()),
                 balance.inTransitQuantity(), balance.damagedQuantity(), balance.quarantineQuantity(),
@@ -114,7 +115,8 @@ public final class InventoryService {
                 balance.reservedQuantity().subtract(reservation.quantity()), balance.inTransitQuantity(),
                 balance.damagedQuantity(), balance.quarantineQuantity(), balance.version() + 1));
         final Reservation released = new Reservation(reservation.id(), reservation.skuId(), reservation.location(),
-                reservation.quantity(), true, reservation.createdAt(), Instant.now(clock));
+                reservation.quantity(), reservation.idempotencyKey(), true, reservation.createdAt(),
+                Instant.now(clock));
         repository.updateReservation(released);
         audit.record(command.actor(), "INVENTORY_RESERVATION_RELEASED", released.id());
         return released;
@@ -141,7 +143,7 @@ public final class InventoryService {
         applyLedger(reversingLedger);
         repository.updateTransaction(new StockTransaction(original.id(), original.transactionNumber(),
                 original.idempotencyKey(), original.movementType(), StockTransactionStatus.REVERSED,
-                original.reversedTransactionId(), original.lines(), original.postedAt(), original.businessDate(),
+                reversal.id(), original.lines(), original.postedAt(), original.businessDate(),
                 original.actor()));
         repository.insertTransaction(reversal);
         repository.appendLedgerEntries(reversingLedger);

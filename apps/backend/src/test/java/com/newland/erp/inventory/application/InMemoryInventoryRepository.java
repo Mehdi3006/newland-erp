@@ -20,7 +20,8 @@ final class InMemoryInventoryRepository implements InventoryRepository {
 
     @Override
     public boolean idempotencyKeyExists(final String idempotencyKey) {
-        return transactions.stream().anyMatch(tx -> tx.idempotencyKey().equals(idempotencyKey));
+        return transactions.stream().anyMatch(tx -> tx.idempotencyKey().equals(idempotencyKey))
+                || reservations.stream().anyMatch(reservation -> reservation.idempotencyKey().equals(idempotencyKey));
     }
 
     @Override

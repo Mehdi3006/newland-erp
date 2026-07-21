@@ -92,6 +92,8 @@ final class InventoryServiceTest {
 
         assertThat(repository.findTransaction(posted.id()).orElseThrow().status())
                 .isEqualTo(StockTransactionStatus.REVERSED);
+        assertThat(repository.findTransaction(posted.id()).orElseThrow().reversedTransactionId())
+                .isEqualTo(reversal.id());
         assertThat(reversal.movementType()).isEqualTo(MovementType.REVERSAL);
         assertThat(balance().onHandQuantity().value()).isEqualByComparingTo("0");
     }
@@ -143,10 +145,23 @@ final class InventoryServiceTest {
         assertThat(balance().version()).isGreaterThan(version);
     }
 
+    @Test
+    void duplicateReservationIdempotencyKeyIsRejected() {
+        service.post(post(MovementType.OPENING_BALANCE, "open-1", null, warehouseA, qty("10"), item,
+                InventoryStatus.AVAILABLE, null, null));
+        service.reserve(new InventoryCommands.Reserve(item, warehouseA, qty("4"), "reserve-1", "architect"));
+
+        assertThatThrownBy(() -> service.reserve(new InventoryCommands.Reserve(item, warehouseA, qty("1"),
+                "reserve-1", "architect")))
+                .isInstanceOf(InventoryConflictException.class);
+        assertThat(balance().reservedQuantity().value()).isEqualByComparingTo("4");
+    }
+
     private StockBalanceView balance() {
         final var balance = repository.findBalanceForUpdate(item.skuId(), warehouseA, InventoryStatus.AVAILABLE)
                 .orElseThrow();
-        return new StockBalanceView(balance.onHandQuantity(), balance.availableQuantity(), balance.version());
+        return new StockBalanceView(balance.onHandQuantity(), balance.reservedQuantity(), balance.availableQuantity(),
+                balance.version());
     }
 
     private InventoryService service(final boolean negativeStockAllowed) {
@@ -196,7 +211,7 @@ final class InventoryServiceTest {
         return new InventoryQuantity(new BigDecimal(value), "EA");
     }
 
-    private record StockBalanceView(InventoryQuantity onHandQuantity, InventoryQuantity availableQuantity,
-                                    long version) {
+    private record StockBalanceView(InventoryQuantity onHandQuantity, InventoryQuantity reservedQuantity,
+                                    InventoryQuantity availableQuantity, long version) {
     }
 }
