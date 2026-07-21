@@ -73,8 +73,8 @@ public final class ProcurementService {
             catalog.requireSku(reference.productId(), reference.skuId(), reference.supplierSku());
             masterData.requireUom(reference.minimumOrderQuantity().uomCode());
         });
-        final Supplier supplier = repository.insertSupplier(new Supplier(UUID.randomUUID(), command.supplierCode(),
-                command.name(), SupplierStatus.ACTIVE, command.contacts(), command.addresses(),
+        final Supplier supplier = repository.insertSupplier(new Supplier(UUID.randomUUID(), command.idempotencyKey(),
+                command.supplierCode(), command.name(), SupplierStatus.ACTIVE, command.contacts(), command.addresses(),
                 command.productReferences(), now()));
         command.attachmentIds().forEach(attachmentId -> attachments.attach(supplier.id(), attachmentId));
         audit.record(command.actor(), "PROCUREMENT_SUPPLIER_CREATED", supplier.id());
@@ -193,6 +193,9 @@ public final class ProcurementService {
         enterprise.requireCompanyBranchWarehouse(command.companyId(), command.branchId(), command.warehouseId());
         masterData.requireCurrency(command.currencyId());
         command.lines().forEach(this::validatePurchaseOrderLine);
+        if (!command.directPurchase()) {
+            assertOrderDoesNotExceedRequisition(command.requisitionId(), command.lines());
+        }
         final PurchaseOrder order = repository.insertPurchaseOrder(new PurchaseOrder(UUID.randomUUID(),
                 numbers.nextNumber("PO"), command.idempotencyKey(), command.requisitionId(), command.supplierId(),
                 command.companyId(), command.branchId(), command.warehouseId(), command.currencyId(),
@@ -217,8 +220,12 @@ public final class ProcurementService {
     public PurchaseOrder recordPartialDelivery(final ProcurementCommands.RecordPartialDelivery command) {
         authorization.requirePermission(command.actor(), "procurement.purchase-order.receive");
         final PurchaseOrder order = purchaseOrder(command.purchaseOrderId());
-        if (order.status() == PurchaseOrderStatus.CANCELLED) {
-            throw new ProcurementConflictException("Cancelled purchase orders cannot receive deliveries.");
+        if (order.status() != PurchaseOrderStatus.APPROVED
+                && order.status() != PurchaseOrderStatus.PARTIALLY_RECEIVED) {
+            throw new ProcurementConflictException("Only approved purchase orders can receive deliveries.");
+        }
+        if (order.lines().stream().noneMatch(line -> line.id().equals(command.lineId()))) {
+            throw new ProcurementConflictException("Purchase order line not found: " + command.lineId());
         }
         final PurchaseOrder updated = order.receive(command.lineId(), command.quantity());
         repository.updatePurchaseOrder(updated);
@@ -267,6 +274,19 @@ public final class ProcurementService {
         masterData.requireUom(line.orderedQuantity().uomCode());
         if (line.taxCategoryId() != null) {
             masterData.requireTaxCategory(line.taxCategoryId());
+        }
+    }
+
+    private void assertOrderDoesNotExceedRequisition(final UUID requisitionId,
+                                                     final List<PurchaseOrder.PurchaseOrderLine> lines) {
+        final PurchaseRequisition requisition = requisition(requisitionId);
+        for (final PurchaseOrder.PurchaseOrderLine orderLine : lines) {
+            final ProcurementLine requisitionLine = requisition.lines().stream()
+                    .filter(line -> line.skuCode().equals(orderLine.skuCode())).findFirst()
+                    .orElseThrow(() -> new ProcurementConflictException("Purchase order SKU is not on requisition."));
+            if (orderLine.orderedQuantity().isGreaterThan(requisitionLine.quantity())) {
+                throw new ProcurementConflictException("Purchase order quantity exceeds approved requisition.");
+            }
         }
     }
 

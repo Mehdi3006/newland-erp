@@ -4,18 +4,24 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-public record Supplier(UUID id, String supplierCode, String name, SupplierStatus status,
+public record Supplier(UUID id, String idempotencyKey, String supplierCode, String name, SupplierStatus status,
                        List<SupplierContact> contacts, List<SupplierAddress> addresses,
                        List<SupplierProductReference> productReferences, Instant createdAt) {
     public Supplier {
         if (id == null || status == null || createdAt == null) {
             throw new IllegalArgumentException("Supplier identifiers, status and creation time are required.");
         }
+        idempotencyKey = required("idempotencyKey", idempotencyKey);
         supplierCode = required("supplierCode", supplierCode).toUpperCase();
         name = required("name", name);
         contacts = contacts == null ? List.of() : List.copyOf(contacts);
         addresses = addresses == null ? List.of() : List.copyOf(addresses);
         productReferences = productReferences == null ? List.of() : List.copyOf(productReferences);
+        final long distinctSkuReferences = productReferences.stream().map(SupplierProductReference::skuId)
+                .distinct().count();
+        if (distinctSkuReferences != productReferences.size()) {
+            throw new ProcurementConflictException("Duplicate supplier product reference.");
+        }
     }
 
     public record SupplierContact(UUID id, String name, String email, String phone) {

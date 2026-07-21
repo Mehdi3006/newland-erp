@@ -24,7 +24,8 @@ final class InMemoryProcurementRepository implements ProcurementRepository {
 
     @Override
     public boolean idempotencyKeyExists(final String idempotencyKey) {
-        return requisitions.stream().anyMatch(item -> item.idempotencyKey().equals(idempotencyKey))
+        return suppliers.stream().anyMatch(item -> item.idempotencyKey().equals(idempotencyKey))
+                || requisitions.stream().anyMatch(item -> item.idempotencyKey().equals(idempotencyKey))
                 || rfqs.stream().anyMatch(item -> item.idempotencyKey().equals(idempotencyKey))
                 || quotations.stream().anyMatch(item -> item.idempotencyKey().equals(idempotencyKey))
                 || purchaseOrders.stream().anyMatch(item -> item.idempotencyKey().equals(idempotencyKey));

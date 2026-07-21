@@ -52,6 +52,17 @@ final class ProcurementDomainTest {
         assertThatThrownBy(requisition::approve).isInstanceOf(ProcurementConflictException.class);
     }
 
+    @Test
+    void duplicateSupplierProductReferencesAreRejected() {
+        final UUID skuId = UUID.randomUUID();
+        final Supplier.SupplierProductReference first = supplierReference(skuId);
+        final Supplier.SupplierProductReference second = supplierReference(skuId);
+
+        assertThatThrownBy(() -> new Supplier(UUID.randomUUID(), "idem-supplier", "SUP-1", "Supplier",
+                SupplierStatus.ACTIVE, List.of(), List.of(), List.of(first, second), Instant.now()))
+                .isInstanceOf(ProcurementConflictException.class);
+    }
+
     static PurchaseOrder order() {
         return new PurchaseOrder(UUID.randomUUID(), "PO-1", "idem-po", UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), PurchaseOrderStatus.DRAFT,
@@ -71,5 +82,10 @@ final class ProcurementDomainTest {
 
     static ProcurementQuantity qty(final String value) {
         return new ProcurementQuantity(new BigDecimal(value), "EA");
+    }
+
+    private static Supplier.SupplierProductReference supplierReference(final UUID skuId) {
+        return new Supplier.SupplierProductReference(UUID.randomUUID(), UUID.randomUUID(), skuId, "SUP-SKU",
+                7, qty("5"), "carton");
     }
 }

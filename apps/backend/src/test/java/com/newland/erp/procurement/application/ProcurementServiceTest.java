@@ -35,6 +35,8 @@ final class ProcurementServiceTest {
 
         assertThatThrownBy(() -> service.createSupplier(supplier("idem-supplier-2", "SUP-1")))
                 .isInstanceOf(ProcurementConflictException.class);
+        assertThatThrownBy(() -> service.createSupplier(supplier("idem-supplier-1", "SUP-2")))
+                .isInstanceOf(ProcurementConflictException.class);
         assertThatThrownBy(() -> service.submitRequisition(new ProcurementCommands.SubmitRequisition(
                 "bad-product", ids(), ids(), ids(), List.of(line(null, "SKU-1")), List.of(), "architect")))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -118,6 +120,30 @@ final class ProcurementServiceTest {
         assertThatThrownBy(() -> service.createRfq(new ProcurementCommands.CreateRfq("rfq-fail",
                 UUID.randomUUID(), List.of(supplier.id()), "architect"))).isInstanceOf(RuntimeException.class);
         assertThat(repository.rfqs).isEmpty();
+    }
+
+    @Test
+    void purchaseOrderCannotExceedApprovedRequisitionOrReceiveBeforeApprovalOrUnknownLine() {
+        final Supplier supplier = service.createSupplier(supplier("idem-supplier-1", "SUP-1"));
+        final var requisition = service.approveRequisition(new ProcurementCommands.ApproveRequisition(
+                service.submitRequisition(requisition("req-1")).id(), "architect"));
+
+        assertThatThrownBy(() -> service.createPurchaseOrder(new ProcurementCommands.CreatePurchaseOrder(
+                "po-excess", requisition.id(), false, supplier.id(), ids(), ids(), ids(), ids(),
+                List.of(poLine("11")), LocalDate.parse("2026-08-01"), List.of(), "architect")))
+                .isInstanceOf(ProcurementConflictException.class);
+
+        final PurchaseOrder draft = service.createPurchaseOrder(order("po-1", requisition.id(), supplier.id()));
+        assertThatThrownBy(() -> service.recordPartialDelivery(new ProcurementCommands.RecordPartialDelivery(
+                draft.id(), draft.lines().getFirst().id(), qty("1"), "architect")))
+                .isInstanceOf(ProcurementConflictException.class);
+
+        final PurchaseOrder approved = service.approvePurchaseOrder(new ProcurementCommands.ApprovePurchaseOrder(
+                draft.id(), "architect"));
+        assertThatThrownBy(() -> service.recordPartialDelivery(new ProcurementCommands.RecordPartialDelivery(
+                approved.id(), UUID.randomUUID(), qty("1"), "architect")))
+                .isInstanceOf(ProcurementConflictException.class);
+        assertThat(receiptRequests).isEmpty();
     }
 
     private ProcurementService service() {

@@ -1,5 +1,6 @@
 CREATE TABLE procurement_supplier (
     id uuid PRIMARY KEY,
+    idempotency_key varchar(160) NOT NULL UNIQUE,
     supplier_code varchar(120) NOT NULL UNIQUE,
     name varchar(240) NOT NULL,
     status varchar(24) NOT NULL,

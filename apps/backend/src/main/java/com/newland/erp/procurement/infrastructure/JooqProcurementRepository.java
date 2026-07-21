@@ -42,7 +42,9 @@ public final class JooqProcurementRepository implements ProcurementRepository {
 
     @Override
     public boolean idempotencyKeyExists(final String idempotencyKey) {
-        return dsl.fetchExists(table("procurement_purchase_requisition"), text("idempotency_key").eq(idempotencyKey))
+        return dsl.fetchExists(table("procurement_supplier"), text("idempotency_key").eq(idempotencyKey))
+                || dsl.fetchExists(table("procurement_purchase_requisition"),
+                text("idempotency_key").eq(idempotencyKey))
                 || dsl.fetchExists(table("procurement_rfq"), text("idempotency_key").eq(idempotencyKey))
                 || dsl.fetchExists(table("procurement_supplier_quotation"),
                 text("idempotency_key").eq(idempotencyKey))
@@ -57,9 +59,10 @@ public final class JooqProcurementRepository implements ProcurementRepository {
     @Override
     public Supplier insertSupplier(final Supplier supplier) {
         dsl.insertInto(table("procurement_supplier"))
-                .columns(id(), text("supplier_code"), text("name"), text("status"), instant("created_at"))
-                .values(supplier.id(), supplier.supplierCode(), supplier.name(), supplier.status().name(),
-                        supplier.createdAt())
+                .columns(id(), text("idempotency_key"), text("supplier_code"), text("name"), text("status"),
+                        instant("created_at"))
+                .values(supplier.id(), supplier.idempotencyKey(), supplier.supplierCode(), supplier.name(),
+                        supplier.status().name(), supplier.createdAt())
                 .execute();
         supplier.contacts().forEach(contact -> dsl.insertInto(table("procurement_supplier_contact"))
                 .columns(id(), uuid("supplier_id"), text("name"), text("email"), text("phone"))
@@ -240,9 +243,9 @@ public final class JooqProcurementRepository implements ProcurementRepository {
 
     private Supplier supplier(final Record record) {
         final UUID supplierId = record.get(id());
-        return new Supplier(supplierId, record.get(text("supplier_code")), record.get(text("name")),
-                SupplierStatus.valueOf(record.get(text("status"))), contacts(supplierId), addresses(supplierId),
-                productReferences(supplierId), instantValue(record, "created_at"));
+        return new Supplier(supplierId, record.get(text("idempotency_key")), record.get(text("supplier_code")),
+                record.get(text("name")), SupplierStatus.valueOf(record.get(text("status"))), contacts(supplierId),
+                addresses(supplierId), productReferences(supplierId), instantValue(record, "created_at"));
     }
 
     private PurchaseRequisition requisition(final Record record) {
