@@ -9,6 +9,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.5 Procurement Foundation for suppliers, contacts, addresses, supplier product references,
+  purchase requisitions, approvals, RFQs, supplier invitations, supplier quotations, auditable
+  quotation comparison, purchase orders, approvals, amendments, cancellation, partial delivery
+  tracking, idempotency protection, attachment/audit/number-series reuse, and explicit inventory
+  receipt requests through a port.
+- Versioned Procurement REST APIs under `/api/v1/procurement`, RFC 9457 Problem Details handling,
+  OpenAPI grouping, Flyway migration, jOOQ repository, Spring Modulith and ArchUnit checks, and
+  PostgreSQL Testcontainers coverage for P3.5.
 - Phase P3.4 Inventory Foundation for stock transactions, movement lines, append-only stock ledger,
   derived balances, reservations/releases, lots, serial numbers, inventory statuses, expiry checks,
   reversals, idempotency protection, transaction immutability, audit/event/outbox/attachment reuse,
