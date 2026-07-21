@@ -9,6 +9,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.3 Master Data foundation for organization, company, business unit, branch, warehouse
+  structure references, geography, currencies, exchange rates, units of measure, tax references,
+  payment/shipping terms, languages, time zones, fiscal calendars, number series, document types,
+  attachment categories, product classification references, attributes, attribute values, and
+  barcode types.
+- Versioned Master Data REST APIs under `/api/v1/master-data`, RFC 9457 Problem Details handling,
+  OpenAPI grouping, Flyway migration, jOOQ repository, Spring Modulith and ArchUnit checks, and
+  PostgreSQL Testcontainers coverage for P3.3.
 - Phase P3.2.5 Platform Foundation for internal domain events, outbox, audit records, background
   jobs, scheduler-ready records, file storage abstraction, attachments, configuration/global
   settings, feature flags, cache abstraction, localization, error catalog, and domain event catalog.
