@@ -72,15 +72,18 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/identity/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/masterdata/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/platform/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/productcatalog/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/masterdata/MasterDataArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/platform/PlatformArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/productcatalog/ProductCatalogArchitectureTest.java',
   'apps/backend/src/main/resources/application.yml',
   'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V2__identity_access_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V3__platform_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V4__master_data_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V5__shared_product_catalog_foundation.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -95,6 +98,8 @@ const approvedBackendJavaRoots = [
   'apps/backend/src/test/java/com/newland/erp/masterdata/',
   'apps/backend/src/main/java/com/newland/erp/platform/',
   'apps/backend/src/test/java/com/newland/erp/platform/',
+  'apps/backend/src/main/java/com/newland/erp/productcatalog/',
+  'apps/backend/src/test/java/com/newland/erp/productcatalog/',
 ];
 const approvedBackendResourceRoots = ['apps/backend/src/test/resources/'];
 const approvedBoundedContextLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
@@ -138,6 +143,13 @@ const approvedPlatformTables = new Set([
   'platform_domain_event_catalog',
 ]);
 const approvedMasterDataTables = new Set(['master_data_record']);
+const approvedProductCatalogTables = new Set([
+  'product_catalog_product',
+  'product_catalog_sku',
+  'product_catalog_packaging',
+  'product_catalog_content',
+  'product_catalog_media',
+]);
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -330,9 +342,10 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedEnterpriseTables.has(tableName) &&
       !approvedIdentityTables.has(tableName) &&
       !approvedPlatformTables.has(tableName) &&
-      !approvedMasterDataTables.has(tableName)
+      !approvedMasterDataTables.has(tableName) &&
+      !approvedProductCatalogTables.has(tableName)
     ) {
-      return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3 tables: ${normalizedPath} (${tableName})`;
+      return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5 tables: ${normalizedPath} (${tableName})`;
     }
   }
 
@@ -386,7 +399,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved P3.1/P3.2/P3.2.5/P3.3 bounded-context boundaries are intact.',
+    'Architecture verification passed: approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5 bounded-context boundaries are intact.',
   );
 }
 

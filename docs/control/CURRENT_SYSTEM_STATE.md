@@ -1,6 +1,7 @@
 # Current System State
 
-Status: Phase P3.3 Master Data implementation on branch `codex/p3-3-master-data`.
+Status: Phase P3.3.5 Shared Product Catalog implementation on branch
+`codex/p3-3-5-shared-product-catalog`.
 
 ## Phase State
 
@@ -9,8 +10,9 @@ Status: Phase P3.3 Master Data implementation on branch `codex/p3-3-master-data`
 - P3.1 Enterprise Structure is approved, merged, and part of `main`.
 - P3.2 Identity and Access is approved, merged, and part of `main`.
 - P3.2.5 Platform Foundation is approved, merged, and part of `main`.
-- P3.3 Master Data implementation is present on this branch and remains under quality and
-  architecture review until explicitly approved.
+- P3.3 Master Data is approved, merged, and part of `main`.
+- P3.3.5 Shared Product Catalog implementation is present on this branch and remains under quality
+  and architecture review until explicitly approved.
 - Inventory and all other operational ERP modules have not started and must not begin until
   explicitly approved.
 
@@ -41,6 +43,11 @@ Status: Phase P3.3 Master Data implementation on branch `codex/p3-3-master-data`
 - Master Data Flyway migration under
   `apps/backend/src/main/resources/db/migration/V4__master_data_foundation.sql`.
 - Master Data tests under `apps/backend/src/test/java/com/newland/erp/masterdata`.
+- Shared Product Catalog backend slice for P3.3.5 under
+  `apps/backend/src/main/java/com/newland/erp/productcatalog`.
+- Shared Product Catalog Flyway migration under
+  `apps/backend/src/main/resources/db/migration/V5__shared_product_catalog_foundation.sql`.
+- Shared Product Catalog tests under `apps/backend/src/test/java/com/newland/erp/productcatalog`.
 
 ## Current Business Architecture Baseline
 
@@ -59,10 +66,11 @@ Status: Phase P3.3 Master Data implementation on branch `codex/p3-3-master-data`
 
 ## Implementation State
 
-P3.3 contains only enterprise master-data foundation records and APIs. It adds reference-data
-aggregates for organization, company, business unit, branch, warehouse structure references,
-geography, currencies, units of measure, tax references, payment/shipping references, localization
-references, fiscal/numbering/document references, attachment categories, and product classification
-references. No inventory quantities, stock movements, procurement, sales, accounting, CRM, HR,
-pricing, manufacturing, fake operational data, or unrelated ERP implementation exists in this
+P3.3.5 contains only the shared product catalog foundation. It adds product and SKU identity,
+product code, GTIN/EAN/UPC, barcode, category/brand/family assignments, attributes and values, UOM
+assignment, packaging hierarchy, units per package, dimensions, weight, media, images, documents,
+manuals, brochures, lifecycle status, multilingual content, tags, search metadata, warranty
+metadata, and audit/attachment/localization integration ports. No inventory balances, stock
+movements, warehouse operations, procurement, sales, pricing, accounting, CRM, HR, manufacturing,
+supplier purchasing data, fake operational data, or unrelated ERP implementation exists in this
 branch.
