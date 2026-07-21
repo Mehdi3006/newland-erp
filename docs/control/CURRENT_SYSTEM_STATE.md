@@ -1,6 +1,7 @@
 # Current System State
 
-Status: Phase P3.4 Inventory Foundation implementation on branch `codex/p3-4-inventory-foundation`.
+Status: Phase P3.5 Procurement Foundation implementation on branch
+`codex/p3-5-procurement-foundation`.
 
 ## Phase State
 
@@ -11,10 +12,11 @@ Status: Phase P3.4 Inventory Foundation implementation on branch `codex/p3-4-inv
 - P3.2.5 Platform Foundation is approved, merged, and part of `main`.
 - P3.3 Master Data is approved, merged, and part of `main`.
 - P3.3.5 Shared Product Catalog is approved, merged, and part of `main`.
-- P3.4 Inventory Foundation implementation is present on this branch and remains under quality and
+- P3.4 Inventory Foundation is approved, merged, and part of `main`.
+- P3.5 Procurement Foundation implementation is present on this branch and remains under quality and
   architecture review until explicitly approved.
-- Procurement, Sales, Pricing, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
-  have not started and must not begin until explicitly approved.
+- Sales, Pricing, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules have not
+  started and must not begin until explicitly approved.
 
 ## Current Repository Content
 
@@ -53,6 +55,11 @@ Status: Phase P3.4 Inventory Foundation implementation on branch `codex/p3-4-inv
 - Inventory Foundation Flyway migration under
   `apps/backend/src/main/resources/db/migration/V6__inventory_foundation.sql`.
 - Inventory Foundation tests under `apps/backend/src/test/java/com/newland/erp/inventory`.
+- Procurement Foundation backend slice for P3.5 under
+  `apps/backend/src/main/java/com/newland/erp/procurement`.
+- Procurement Foundation Flyway migration under
+  `apps/backend/src/main/resources/db/migration/V7__procurement_foundation.sql`.
+- Procurement Foundation tests under `apps/backend/src/test/java/com/newland/erp/procurement`.
 
 ## Current Business Architecture Baseline
 
@@ -71,11 +78,12 @@ Status: Phase P3.4 Inventory Foundation implementation on branch `codex/p3-4-inv
 
 ## Implementation State
 
-P3.4 contains only the inventory foundation. It adds stock transaction posting, stock movement
-lines, append-only stock ledger entries, derived stock balances, reservations and releases, lots,
-serial numbers, inventory statuses, expiry-date checks, reversal transactions, idempotency
-protection, optimistic/database-locking repository boundaries, audit integration, domain event and
-outbox integration ports, attachment reuse, number-series reuse, and identity authorization reuse.
-No procurement workflow, purchase order, sales order, pricing, accounting journal entry, costing
-method, manufacturing, CRM, HR, advanced replenishment, forecasting, fake operational data, or
-unrelated ERP implementation exists in this branch.
+P3.5 contains only the procurement foundation. It adds suppliers, supplier contacts and addresses,
+supplier product references, purchase requisitions and approvals, RFQs with multiple supplier
+invitations, supplier quotations, auditable quotation comparison, purchase orders, controlled
+amendments with revision history, cancellation, partial-delivery tracking, idempotency protection,
+explicit inventory receipt requests through a port, master-data/catalog/enterprise/identity reuse
+through ports, audit, attachments, number-series, and domain-event integration. No accounts payable,
+accounting journal entry, supplier payment, direct inventory balance mutation, goods-receipt posting
+logic, sales, pricing engine, CRM, manufacturing, HR, advanced sourcing, automated replenishment,
+demand forecasting, fake operational data, or unrelated ERP implementation exists in this branch.
