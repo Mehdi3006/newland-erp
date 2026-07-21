@@ -1,7 +1,6 @@
 # Current System State
 
-Status: Phase P3.5 Procurement Foundation implementation on branch
-`codex/p3-5-procurement-foundation`.
+Status: Phase P3.6 Sales Foundation implementation on branch `codex/p3-6-sales-foundation`.
 
 ## Phase State
 
@@ -13,10 +12,11 @@ Status: Phase P3.5 Procurement Foundation implementation on branch
 - P3.3 Master Data is approved, merged, and part of `main`.
 - P3.3.5 Shared Product Catalog is approved, merged, and part of `main`.
 - P3.4 Inventory Foundation is approved, merged, and part of `main`.
-- P3.5 Procurement Foundation implementation is present on this branch and remains under quality and
+- P3.5 Procurement Foundation is approved, merged, and part of `main`.
+- P3.6 Sales Foundation implementation is present on this branch and remains under quality and
   architecture review until explicitly approved.
-- Sales, Pricing, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules have not
-  started and must not begin until explicitly approved.
+- Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
+  have not started and must not begin until explicitly approved.
 
 ## Current Repository Content
 
@@ -60,6 +60,10 @@ Status: Phase P3.5 Procurement Foundation implementation on branch
 - Procurement Foundation Flyway migration under
   `apps/backend/src/main/resources/db/migration/V7__procurement_foundation.sql`.
 - Procurement Foundation tests under `apps/backend/src/test/java/com/newland/erp/procurement`.
+- Sales Foundation backend slice for P3.6 under `apps/backend/src/main/java/com/newland/erp/sales`.
+- Sales Foundation Flyway migration under
+  `apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql`.
+- Sales Foundation tests under `apps/backend/src/test/java/com/newland/erp/sales`.
 
 ## Current Business Architecture Baseline
 
@@ -78,12 +82,12 @@ Status: Phase P3.5 Procurement Foundation implementation on branch
 
 ## Implementation State
 
-P3.5 contains only the procurement foundation. It adds suppliers, supplier contacts and addresses,
-supplier product references, purchase requisitions and approvals, RFQs with multiple supplier
-invitations, supplier quotations, auditable quotation comparison, purchase orders, controlled
-amendments with revision history, cancellation, partial-delivery tracking, idempotency protection,
-explicit inventory receipt requests through a port, master-data/catalog/enterprise/identity reuse
-through ports, audit, attachments, number-series, and domain-event integration. No accounts payable,
-accounting journal entry, supplier payment, direct inventory balance mutation, goods-receipt posting
-logic, sales, pricing engine, CRM, manufacturing, HR, advanced sourcing, automated replenishment,
-demand forecasting, fake operational data, or unrelated ERP implementation exists in this branch.
+P3.6 contains only the sales foundation. It adds customers, contacts, addresses, customer credit
+profiles, customer product references, sales quotations, quotation approval/revision/expiry, sales
+orders, approvals, amendments, cancellations, reservation and delivery request tracking, idempotency
+protection, explicit inventory availability/reservation/delivery requests through ports,
+master-data/catalog/enterprise/identity reuse through ports, audit, attachments, number-series, and
+domain-event integration. No Accounts Receivable, accounting journal entry, customer payment, credit
+collection, pricing engine, discount engine, direct inventory balance mutation, delivery execution,
+stock issue posting, invoicing, CRM campaign, manufacturing, HR, forecasting, automated
+replenishment, fake operational data, or unrelated ERP implementation exists in this branch.
