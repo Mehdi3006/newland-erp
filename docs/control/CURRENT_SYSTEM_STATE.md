@@ -1,6 +1,6 @@
 # Current System State
 
-Status: Phase P3.6 Sales Foundation is approved, merged, and part of `main`.
+Status: Phase P3.7 Finance Foundation implementation on branch `codex/p3-7-finance-foundation`.
 
 ## Phase State
 
@@ -14,6 +14,7 @@ Status: Phase P3.6 Sales Foundation is approved, merged, and part of `main`.
 - P3.4 Inventory Foundation is approved, merged, and part of `main`.
 - P3.5 Procurement Foundation is approved, merged, and part of `main`.
 - P3.6 Sales Foundation is approved, merged, and part of `main`.
+- P3.7 Finance Foundation is under implementation and review on this branch.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
@@ -63,6 +64,9 @@ Status: Phase P3.6 Sales Foundation is approved, merged, and part of `main`.
 - Sales Foundation Flyway migration under
   `apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql`.
 - Sales Foundation tests under `apps/backend/src/test/java/com/newland/erp/sales`.
+- Finance Foundation backend slice under `apps/backend/src/main/java/com/newland/erp/finance`.
+- Finance Foundation Flyway migration under
+  `apps/backend/src/main/resources/db/migration/V9__finance_foundation.sql`.
 
 ## Current Business Architecture Baseline
 
@@ -80,6 +84,12 @@ Status: Phase P3.6 Sales Foundation is approved, merged, and part of `main`.
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.7 contains only the Finance Foundation. It adds chart of accounts, account hierarchy, fiscal
+years, accounting periods, journals, reversals, cost/profit centers, currency snapshots, and
+explicit future finance posting ports. It does not add AP, AR, payments, banking, tax filing,
+assets, budgeting, payroll, consolidation, automatic source-document posting, financial statements,
+or reporting.
 
 P3.6 contains only the sales foundation. It adds customers, contacts, addresses, customer credit
 profiles, customer product references, sales quotations, quotation approval/revision/expiry, sales

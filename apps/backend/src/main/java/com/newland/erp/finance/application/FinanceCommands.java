@@ -1,0 +1,53 @@
+package com.newland.erp.finance.application;
+
+import com.newland.erp.finance.domain.Account;
+import com.newland.erp.finance.domain.JournalEntry;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+public final class FinanceCommands {
+  public record CreateAccount(
+      UUID companyId,
+      String code,
+      String name,
+      Account.AccountType type,
+      UUID parentId,
+      boolean postable,
+      String actor) {}
+
+  public record CreateFiscalYear(
+      UUID companyId,
+      String code,
+      LocalDate startsOn,
+      LocalDate endsOn,
+      boolean closed,
+      String actor) {}
+
+  public record CreatePeriod(
+      UUID fiscalYearId,
+      String code,
+      LocalDate startsOn,
+      LocalDate endsOn,
+      boolean closed,
+      String actor) {}
+
+  public record CreateJournal(
+      String idempotencyKey,
+      UUID companyId,
+      UUID branchId,
+      UUID fiscalYearId,
+      UUID periodId,
+      LocalDate postingDate,
+      List<JournalEntry.JournalLine> lines,
+      List<UUID> attachmentIds,
+      String actor) {}
+
+  public record EditJournal(UUID journalId, List<JournalEntry.JournalLine> lines, String actor) {}
+
+  public record PostJournal(UUID journalId, String actor) {}
+
+  public record ReverseJournal(UUID journalId, String idempotencyKey, String actor) {}
+
+  private FinanceCommands() {}
+}
