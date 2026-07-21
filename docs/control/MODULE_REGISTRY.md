@@ -6,8 +6,8 @@ This registry tracks business architecture readiness. It is not a code module re
 | ------------------------------ | ------------------------ | --------------------- | ----------------------------------------------------- |
 | Enterprise Structure           | Defined                  | Implemented           | P3.1 approved and merged.                             |
 | Identity and Access            | Defined                  | Implemented           | P3.2 approved and merged.                             |
-| Master Data                    | Defined                  | P3.3 PR review        | Reference-data foundation only; no operational logic. |
-| Product Information Management | Defined                  | Not started           | Requires SKU and traceability decisions.              |
+| Master Data                    | Defined                  | Implemented           | P3.3 approved and merged.                             |
+| Product Information Management | Defined                  | P3.3.5 PR review      | Shared catalog foundation only; no inventory/pricing. |
 | Inventory                      | Defined                  | Not started           | Requires valuation and negative-stock decisions.      |
 | Procurement                    | Defined                  | Not started           | Requires approval-limit decisions.                    |
 | Import Logistics               | Defined                  | Not started           | Requires customs/logistics decisions.                 |

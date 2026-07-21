@@ -9,6 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.3.5 Shared Product Catalog foundation for product, SKU, product code, GTIN/EAN/UPC,
+  barcode, category/brand/family assignments, product attributes and values, UOM assignment,
+  packaging hierarchy, units per package, dimensions, weights, media, images, documents, manuals,
+  brochures, lifecycle status, multilingual content, tags, search metadata, and warranty metadata.
+- Versioned Product Catalog REST APIs under `/api/v1/product-catalog`, RFC 9457 Problem Details
+  handling, OpenAPI grouping, Flyway migration, jOOQ repository, Spring Modulith and ArchUnit
+  checks, audit/attachment/localization ports, and PostgreSQL Testcontainers coverage for P3.3.5.
 - Phase P3.3 Master Data foundation for organization, company, business unit, branch, warehouse
   structure references, geography, currencies, exchange rates, units of measure, tax references,
   payment/shipping terms, languages, time zones, fiscal calendars, number series, document types,

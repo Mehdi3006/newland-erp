@@ -1,36 +1,35 @@
 # Next Codex Task
 
-## Recommended Task: Complete P3.3 Master Data Review
+## Recommended Task: Complete P3.3.5 Shared Product Catalog Review
 
-P3.2.5 is approved and merged. P3.3 implementation exists on branch `codex/p3-3-master-data` and
-must receive explicit architectural approval before any operational ERP module work begins.
+P3.3 Master Data is approved and merged. P3.3.5 implementation exists on branch
+`codex/p3-3-5-shared-product-catalog` and must receive explicit architectural approval before any
+Inventory, Procurement, Sales, Pricing, or other operational ERP module work begins.
 
-The next task is final review, validation, and approval handling for Master Data only.
+The next task is final review, validation, and approval handling for Shared Product Catalog only.
 
-## P3.3 Scope
+## P3.3.5 Scope
 
 Review and validate implementation for:
 
-- Organization, company, business unit, branch, warehouse, warehouse zone, and warehouse bin
-  reference data.
-- Currency, exchange rate, country, province, city, address, language, and time-zone reference data.
-- Unit of measure and unit-conversion reference data.
-- Tax category, tax rate, payment terms, payment method, shipping method, and Incoterms reference
-  data.
-- Fiscal calendar, number series, document type, attachment category, product category, product
-  brand, product family, product attribute, attribute value, and barcode type reference data.
+- Product, SKU, product code, GTIN/EAN/UPC, barcode, category assignment, brand assignment, family
+  assignment, attributes, and attribute values.
+- UOM assignment, packaging hierarchy, units per package, dimensions, and weight metadata.
+- Product media, images, documents, manuals, brochures, localized content, tags, search metadata,
+  warranty metadata, and lifecycle status.
+- Audit support plus attachment and localization integration ports.
 
-## P3.3 Rules
+## P3.3.5 Rules
 
-- Do not implement inventory quantities, stock movements, procurement, sales, accounting, CRM, HR,
-  pricing, or manufacturing in P3.3.
-- Keep Master Data behind domain, application, API, and infrastructure layers.
-- Keep persistence limited to approved Master Data tables.
-- Do not begin P3.3.x Product Information Management or Inventory before P3.3 approval.
+- Do not implement inventory balances, stock movements, warehouse operations, procurement, sales,
+  pricing, accounting, CRM, HR, manufacturing, or supplier-specific purchasing data.
+- Keep Product Catalog behind domain, application, API, and infrastructure layers.
+- Keep persistence limited to approved Product Catalog tables.
+- Do not begin Inventory or operational Product Information Management before P3.3.5 approval.
 
-## P3.3 Acceptance Draft
+## P3.3.5 Acceptance Draft
 
-- Master Data domain model, repository port, repository adapter, service, REST API, DTOs,
-  validation, Flyway migration, integration tests, and architecture tests pass review.
+- Shared Product Catalog domain model, repository port, repository adapter, service, REST API, DTOs,
+  validation, Flyway migration, unit tests, integration tests, and architecture tests pass review.
 - API, persistence, migrations, architecture checks, security checks, and tests pass quality gates.
 - No operational business modules implemented.
