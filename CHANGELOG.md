@@ -9,6 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.4 Inventory Foundation for stock transactions, movement lines, append-only stock ledger,
+  derived balances, reservations/releases, lots, serial numbers, inventory statuses, expiry checks,
+  reversals, idempotency protection, transaction immutability, audit/event/outbox/attachment reuse,
+  number-series reuse, and identity authorization reuse.
+- Versioned Inventory REST APIs under `/api/v1/inventory`, RFC 9457 Problem Details handling,
+  OpenAPI grouping, Flyway migration, jOOQ repository, Spring Modulith and ArchUnit checks, and
+  PostgreSQL Testcontainers coverage for P3.4.
 - Phase P3.3.5 Shared Product Catalog foundation for product, SKU, product code, GTIN/EAN/UPC,
   barcode, category/brand/family assignments, product attributes and values, UOM assignment,
   packaging hierarchy, units per package, dimensions, weights, media, images, documents, manuals,

@@ -1,7 +1,6 @@
 # Current System State
 
-Status: Phase P3.3.5 Shared Product Catalog implementation on branch
-`codex/p3-3-5-shared-product-catalog`.
+Status: Phase P3.4 Inventory Foundation implementation on branch `codex/p3-4-inventory-foundation`.
 
 ## Phase State
 
@@ -11,10 +10,11 @@ Status: Phase P3.3.5 Shared Product Catalog implementation on branch
 - P3.2 Identity and Access is approved, merged, and part of `main`.
 - P3.2.5 Platform Foundation is approved, merged, and part of `main`.
 - P3.3 Master Data is approved, merged, and part of `main`.
-- P3.3.5 Shared Product Catalog implementation is present on this branch and remains under quality
-  and architecture review until explicitly approved.
-- Inventory and all other operational ERP modules have not started and must not begin until
-  explicitly approved.
+- P3.3.5 Shared Product Catalog is approved, merged, and part of `main`.
+- P3.4 Inventory Foundation implementation is present on this branch and remains under quality and
+  architecture review until explicitly approved.
+- Procurement, Sales, Pricing, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
+  have not started and must not begin until explicitly approved.
 
 ## Current Repository Content
 
@@ -48,6 +48,11 @@ Status: Phase P3.3.5 Shared Product Catalog implementation on branch
 - Shared Product Catalog Flyway migration under
   `apps/backend/src/main/resources/db/migration/V5__shared_product_catalog_foundation.sql`.
 - Shared Product Catalog tests under `apps/backend/src/test/java/com/newland/erp/productcatalog`.
+- Inventory Foundation backend slice for P3.4 under
+  `apps/backend/src/main/java/com/newland/erp/inventory`.
+- Inventory Foundation Flyway migration under
+  `apps/backend/src/main/resources/db/migration/V6__inventory_foundation.sql`.
+- Inventory Foundation tests under `apps/backend/src/test/java/com/newland/erp/inventory`.
 
 ## Current Business Architecture Baseline
 
@@ -66,11 +71,11 @@ Status: Phase P3.3.5 Shared Product Catalog implementation on branch
 
 ## Implementation State
 
-P3.3.5 contains only the shared product catalog foundation. It adds product and SKU identity,
-product code, GTIN/EAN/UPC, barcode, category/brand/family assignments, attributes and values, UOM
-assignment, packaging hierarchy, units per package, dimensions, weight, media, images, documents,
-manuals, brochures, lifecycle status, multilingual content, tags, search metadata, warranty
-metadata, and audit/attachment/localization integration ports. No inventory balances, stock
-movements, warehouse operations, procurement, sales, pricing, accounting, CRM, HR, manufacturing,
-supplier purchasing data, fake operational data, or unrelated ERP implementation exists in this
-branch.
+P3.4 contains only the inventory foundation. It adds stock transaction posting, stock movement
+lines, append-only stock ledger entries, derived stock balances, reservations and releases, lots,
+serial numbers, inventory statuses, expiry-date checks, reversal transactions, idempotency
+protection, optimistic/database-locking repository boundaries, audit integration, domain event and
+outbox integration ports, attachment reuse, number-series reuse, and identity authorization reuse.
+No procurement workflow, purchase order, sales order, pricing, accounting journal entry, costing
+method, manufacturing, CRM, HR, advanced replenishment, forecasting, fake operational data, or
+unrelated ERP implementation exists in this branch.
