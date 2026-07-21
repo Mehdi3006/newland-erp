@@ -8,6 +8,10 @@ packages:
 allowBuilds:
   nx: true
 
+overrides:
+  axios: 1.18.0
+  brace-expansion: 5.0.7
+
 catalogMode: strict
 
 cleanupUnusedCatalogs: true
