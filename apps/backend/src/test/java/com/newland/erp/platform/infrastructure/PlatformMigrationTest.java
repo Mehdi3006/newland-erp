@@ -30,7 +30,8 @@ final class PlatformMigrationTest {
                      select count(*)
                      from information_schema.tables
                      where table_schema = 'public'
-                       and table_name in ('inventory_item', 'sales_order', 'customer', 'supplier', 'journal_entry')
+                       and table_name in ('inventory_item', 'customer_payment', 'supplier_payment',
+                                          'sales_invoice', 'journal_entry')
                      """)) {
             resultSet.next();
             assertThat(resultSet.getInt(1)).isZero();

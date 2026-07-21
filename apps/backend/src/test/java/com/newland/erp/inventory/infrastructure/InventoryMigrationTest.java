@@ -29,9 +29,9 @@ final class InventoryMigrationTest {
              var resultSet = statement.executeQuery("""
                      select
                        count(*) filter (where table_name like 'inventory_%') as inventory_tables,
-                       count(*) filter (where table_name in ('purchase_order', 'sales_order', 'price_list',
-                                                            'journal_entry', 'manufacturing_order',
-                                                            'crm_account', 'hr_employee')) as forbidden_tables
+                       count(*) filter (where table_name in ('customer_payment', 'sales_invoice', 'price_list',
+                                                            'journal_entry', 'manufacturing_order', 'crm_account',
+                                                            'hr_employee')) as forbidden_tables
                      from information_schema.tables
                      where table_schema = 'public'
                      """)) {

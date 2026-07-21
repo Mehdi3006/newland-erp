@@ -29,9 +29,10 @@ final class ProcurementMigrationTest {
              var resultSet = statement.executeQuery("""
                      select
                        count(*) filter (where table_name like 'procurement_%') as procurement_tables,
-                       count(*) filter (where table_name in ('supplier_payment', 'journal_entry', 'sales_order',
-                                                            'price_list', 'manufacturing_order',
-                                                            'crm_account', 'hr_employee')) as forbidden_tables
+                       count(*) filter (where table_name in ('supplier_payment', 'journal_entry', 'sales_invoice',
+                                                            'customer_payment', 'price_list',
+                                                            'manufacturing_order', 'crm_account',
+                                                            'hr_employee')) as forbidden_tables
                      from information_schema.tables
                      where table_schema = 'public'
                      """)) {
