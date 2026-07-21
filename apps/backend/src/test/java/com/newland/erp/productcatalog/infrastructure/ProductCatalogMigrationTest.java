@@ -30,8 +30,8 @@ final class ProductCatalogMigrationTest {
                      select count(*)
                      from information_schema.tables
                      where table_schema = 'public'
-                       and table_name in ('inventory_balance', 'stock_movement', 'purchase_order', 'sales_order',
-                                          'price_list', 'journal_entry', 'manufacturing_order')
+                       and table_name in ('inventory_balance', 'stock_movement', 'customer_payment',
+                                          'sales_invoice', 'price_list', 'journal_entry', 'manufacturing_order')
                      """)) {
             resultSet.next();
             assertThat(resultSet.getInt(1)).isZero();

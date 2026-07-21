@@ -75,6 +75,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/platform/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/procurement/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/productcatalog/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/sales/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/inventory/InventoryArchitectureTest.java',
@@ -82,6 +83,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/test/java/com/newland/erp/platform/PlatformArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/procurement/ProcurementArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/productcatalog/ProductCatalogArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/sales/SalesArchitectureTest.java',
   'apps/backend/src/main/resources/application.yml',
   'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V2__identity_access_foundation.sql',
@@ -90,6 +92,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V5__shared_product_catalog_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V6__inventory_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V7__procurement_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -110,6 +113,8 @@ const approvedBackendJavaRoots = [
   'apps/backend/src/test/java/com/newland/erp/procurement/',
   'apps/backend/src/main/java/com/newland/erp/productcatalog/',
   'apps/backend/src/test/java/com/newland/erp/productcatalog/',
+  'apps/backend/src/main/java/com/newland/erp/sales/',
+  'apps/backend/src/test/java/com/newland/erp/sales/',
 ];
 const approvedBackendResourceRoots = ['apps/backend/src/test/resources/'];
 const approvedBoundedContextLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
@@ -184,6 +189,19 @@ const approvedProcurementTables = new Set([
   'procurement_purchase_order',
   'procurement_purchase_order_line',
   'procurement_purchase_order_revision',
+]);
+const approvedSalesTables = new Set([
+  'sales_customer',
+  'sales_customer_contact',
+  'sales_customer_address',
+  'sales_customer_credit_profile',
+  'sales_customer_product_reference',
+  'sales_quotation',
+  'sales_quotation_line',
+  'sales_quotation_revision',
+  'sales_order',
+  'sales_order_line',
+  'sales_order_revision',
 ]);
 
 async function walk(directory) {
@@ -380,9 +398,10 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedMasterDataTables.has(tableName) &&
       !approvedProductCatalogTables.has(tableName) &&
       !approvedInventoryTables.has(tableName) &&
-      !approvedProcurementTables.has(tableName)
+      !approvedProcurementTables.has(tableName) &&
+      !approvedSalesTables.has(tableName)
     ) {
-      return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5 tables: ${normalizedPath} (${tableName})`;
+      return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5/P3.6 tables: ${normalizedPath} (${tableName})`;
     }
   }
 
@@ -436,7 +455,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5 bounded-context boundaries are intact.',
+    'Architecture verification passed: approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5/P3.6 bounded-context boundaries are intact.',
   );
 }
 

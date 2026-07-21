@@ -9,6 +9,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.6 Sales Foundation for customers, contacts, addresses, customer credit profiles, customer
+  product references, sales quotations, approvals, revisions, expiry enforcement, sales orders,
+  approvals, amendments, cancellation, reservation and delivery request tracking, idempotency
+  protection, attachment/audit/number-series reuse, and explicit inventory
+  availability/reservation/delivery requests through ports.
+- Versioned Sales REST APIs under `/api/v1/sales`, RFC 9457 Problem Details handling, OpenAPI
+  grouping, Flyway migration, jOOQ repository, Spring Modulith and ArchUnit checks, and PostgreSQL
+  Testcontainers coverage for P3.6.
 - Phase P3.5 Procurement Foundation for suppliers, contacts, addresses, supplier product references,
   purchase requisitions, approvals, RFQs, supplier invitations, supplier quotations, auditable
   quotation comparison, purchase orders, approvals, amendments, cancellation, partial delivery

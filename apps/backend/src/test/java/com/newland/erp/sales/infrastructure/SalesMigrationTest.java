@@ -1,4 +1,4 @@
-package com.newland.erp.procurement.infrastructure;
+package com.newland.erp.sales.infrastructure;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -11,12 +11,12 @@ import java.sql.DriverManager;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers(disabledWithoutDocker = true)
-final class ProcurementMigrationTest {
+final class SalesMigrationTest {
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
 
     @Test
-    void migratesProcurementSchemaWithoutAccountingInventoryMutationOrSalesTables() throws Exception {
+    void migratesSalesSchemaWithoutAccountingPricingCrmOrInventoryMutationTables() throws Exception {
         Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .locations("classpath:db/migration")
@@ -28,16 +28,15 @@ final class ProcurementMigrationTest {
              var statement = connection.createStatement();
              var resultSet = statement.executeQuery("""
                      select
-                       count(*) filter (where table_name like 'procurement_%') as procurement_tables,
-                       count(*) filter (where table_name in ('supplier_payment', 'journal_entry', 'sales_invoice',
-                                                            'customer_payment', 'price_list',
-                                                            'manufacturing_order', 'crm_account',
-                                                            'hr_employee')) as forbidden_tables
+                       count(*) filter (where table_name like 'sales_%') as sales_tables,
+                       count(*) filter (where table_name in ('customer_payment', 'journal_entry', 'invoice',
+                                                            'price_list', 'crm_campaign',
+                                                            'manufacturing_order', 'hr_employee')) as forbidden_tables
                      from information_schema.tables
                      where table_schema = 'public'
                      """)) {
             resultSet.next();
-            assertThat(resultSet.getInt("procurement_tables")).isEqualTo(14);
+            assertThat(resultSet.getInt("sales_tables")).isEqualTo(11);
             assertThat(resultSet.getInt("forbidden_tables")).isZero();
         }
     }

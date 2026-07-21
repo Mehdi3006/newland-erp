@@ -17,7 +17,7 @@ describe('Repository architecture verification', () => {
     ['apps/api/src/Main.java', 'unapproved application boundary'],
     ['apps/web/dashboard/index.html', 'unapproved frontend artifact'],
     [
-      'apps/backend/src/main/java/com/newland/erp/sales/domain/Order.java',
+      'apps/backend/src/main/java/com/newland/erp/accounting/domain/Journal.java',
       'unapproved backend artifact',
     ],
     [
@@ -41,6 +41,8 @@ describe('Repository architecture verification', () => {
     'apps/backend/src/main/java/com/newland/erp/enterprise/api/EnterpriseStructureDtos.java',
     'apps/backend/src/main/java/com/newland/erp/enterprise/infrastructure/JooqEnterpriseStructureRepository.java',
     'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
+    'apps/backend/src/main/java/com/newland/erp/sales/domain/SalesOrder.java',
+    'apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql',
     'apps/web/enterprise-structure/index.html',
   ])('allows approved P3.1 path %s', (path) => {
     expect(classifyRepositoryPathViolation(path)).toBeUndefined();

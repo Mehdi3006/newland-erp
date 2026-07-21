@@ -36,8 +36,8 @@ final class IdentityMigrationTest {
                      where table_schema = 'public'
                      order by table_name
                      """)) {
-            final Set<String> forbidden = Set.of("employee", "customer", "supplier", "inventory_item",
-                    "sales_order", "journal_entry");
+            final Set<String> forbidden = Set.of("employee", "customer_payment", "supplier_payment",
+                    "inventory_item", "journal_entry", "sales_invoice");
             while (resultSet.next()) {
                 assertThat(resultSet.getString("table_name")).isNotIn(forbidden);
             }

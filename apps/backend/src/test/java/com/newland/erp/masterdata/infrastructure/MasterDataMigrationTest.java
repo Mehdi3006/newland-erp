@@ -30,7 +30,7 @@ final class MasterDataMigrationTest {
                     select table_name
                     from information_schema.tables
                     where table_schema = 'public'
-                      and table_name in ('inventory_item', 'stock_movement', 'sales_order', 'purchase_order',
+                      and table_name in ('inventory_item', 'stock_movement', 'customer_payment', 'sales_invoice',
                                          'journal_entry', 'crm_account', 'employee')
                     """);
             assertThat(resultSet.next()).isFalse();
