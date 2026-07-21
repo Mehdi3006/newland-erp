@@ -50,14 +50,17 @@ public final class JooqSalesRepository implements SalesRepository {
 
     @Override
     public Customer insertCustomer(final Customer customer) {
-        dsl.insertInto(table("sales_customer"))
-                .columns(id(), text("idempotency_key"), text("customer_code"), text("name"), text("status"),
-                        instant("created_at"))
-                .values(customer.id(), customer.idempotencyKey(), customer.customerCode(), customer.name(),
-                        customer.status().name(), customer.createdAt())
-                .onDuplicateKeyUpdate()
-                .set(text("status"), customer.status().name())
-                .execute();
+        if (dsl.fetchExists(table("sales_customer"), id().eq(customer.id()))) {
+            dsl.update(table("sales_customer")).set(text("status"), customer.status().name())
+                    .where(id().eq(customer.id())).execute();
+        } else {
+            dsl.insertInto(table("sales_customer"))
+                    .columns(id(), text("idempotency_key"), text("customer_code"), text("name"), text("status"),
+                            instant("created_at"))
+                    .values(customer.id(), customer.idempotencyKey(), customer.customerCode(), customer.name(),
+                            customer.status().name(), customer.createdAt())
+                    .execute();
+        }
         replaceCustomerChildren(customer);
         return customer;
     }
