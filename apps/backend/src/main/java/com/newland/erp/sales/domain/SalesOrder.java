@@ -8,7 +8,7 @@ import java.util.UUID;
 public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUID quotationId,
                          UUID customerId, UUID companyId, UUID branchId, UUID warehouseId, UUID salesChannelId,
                          UUID currencyId, SalesOrderStatus status, int revision, List<SalesOrderLine> lines,
-                         LocalDate requestedDeliveryDate, Instant createdAt, String actor) {
+                         int lockVersion, LocalDate requestedDeliveryDate, Instant createdAt, String actor) {
     public SalesOrder {
         if (id == null || customerId == null || companyId == null || branchId == null || warehouseId == null
                 || salesChannelId == null || currencyId == null || status == null || createdAt == null) {
@@ -23,6 +23,9 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
         }
         if (revision < 0) {
             throw new IllegalArgumentException("Sales order revision cannot be negative.");
+        }
+        if (lockVersion < 0) {
+            throw new IllegalArgumentException("Sales order lock version cannot be negative.");
         }
     }
 
@@ -52,10 +55,13 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
         }
         return new SalesOrder(id, orderNumber, idempotencyKey, quotationId, customerId, companyId, branchId,
                 warehouseId, salesChannelId, currencyId, SalesOrderStatus.DRAFT, revision + 1, revisedLines,
-                requestedDeliveryDate, createdAt, actor);
+                lockVersion, requestedDeliveryDate, createdAt, actor);
     }
 
     public SalesOrder cancel() {
+        if (status == SalesOrderStatus.CANCELLED) {
+            throw new SalesConflictException("Sales order is already cancelled.");
+        }
         return withStatus(SalesOrderStatus.CANCELLED, lines.stream().map(SalesOrderLine::cancelRemaining).toList());
     }
 
@@ -73,8 +79,8 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
 
     private SalesOrder withStatus(final SalesOrderStatus nextStatus, final List<SalesOrderLine> nextLines) {
         return new SalesOrder(id, orderNumber, idempotencyKey, quotationId, customerId, companyId, branchId,
-                warehouseId, salesChannelId, currencyId, nextStatus, revision, nextLines, requestedDeliveryDate,
-                createdAt, actor);
+                warehouseId, salesChannelId, currencyId, nextStatus, revision, nextLines, lockVersion,
+                requestedDeliveryDate, createdAt, actor);
     }
 
     public record SalesOrderLine(UUID id, UUID productId, UUID skuId, String skuCode, SalesQuantity orderedQuantity,

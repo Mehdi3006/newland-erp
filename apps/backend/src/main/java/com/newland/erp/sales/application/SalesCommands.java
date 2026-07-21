@@ -42,6 +42,9 @@ public final class SalesCommands {
     public record ApproveQuotation(UUID quotationId, String actor) {
     }
 
+    public record RejectQuotation(UUID quotationId, String actor) {
+    }
+
     public record ExpireQuotation(UUID quotationId, LocalDate today, String actor) {
     }
 

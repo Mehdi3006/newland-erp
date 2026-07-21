@@ -63,11 +63,17 @@ final class SalesServiceTest {
                 "architect"));
         final var expired = service.expireQuotation(new SalesCommands.ExpireQuotation(expiringQuotation.id(),
                 LocalDate.parse("2026-08-01"), "architect"));
+        final var rejected = service.rejectQuotation(new SalesCommands.RejectQuotation(
+                service.createQuotation(quotation("quote-3", customer.id(), LocalDate.parse("2026-09-01"))).id(),
+                "architect"));
 
         assertThat(approved.status()).isEqualTo(SalesQuotationStatus.APPROVED);
         assertThat(revised.status()).isEqualTo(SalesQuotationStatus.DRAFT);
         assertThat(repository.listQuotationRevisions(approved.id())).hasSize(1);
         assertThat(expired.status()).isEqualTo(SalesQuotationStatus.EXPIRED);
+        assertThat(rejected.status()).isEqualTo(SalesQuotationStatus.REJECTED);
+        assertThatThrownBy(() -> service.approveQuotation(new SalesCommands.ApproveQuotation(rejected.id(),
+                "architect"))).isInstanceOf(SalesConflictException.class);
     }
 
     @Test
@@ -129,6 +135,8 @@ final class SalesServiceTest {
         assertThat(deliveryRequests).contains(lineId);
         assertThat(cancelled.status()).isEqualTo(SalesOrderStatus.CANCELLED);
         assertThat(cancelled.lines().getFirst().remainingQuantity().value()).isEqualByComparingTo("0");
+        assertThatThrownBy(() -> service.cancelSalesOrder(new SalesCommands.CancelSalesOrder(cancelled.id(),
+                "architect"))).isInstanceOf(SalesConflictException.class);
         assertThatThrownBy(() -> service(true, true).reserveInventory(new SalesCommands.ReserveInventory(
                 reapproved.id(), UUID.randomUUID(), qty("1"), "architect"))).isInstanceOf(SalesConflictException.class);
     }

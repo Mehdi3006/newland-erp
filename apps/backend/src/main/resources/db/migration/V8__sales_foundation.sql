@@ -60,12 +60,14 @@ CREATE TABLE sales_quotation (
     incoterms_id uuid,
     status varchar(24) NOT NULL,
     revision integer NOT NULL,
+    lock_version integer NOT NULL DEFAULT 0,
     expires_on date,
     created_at timestamptz NOT NULL,
     actor varchar(160) NOT NULL,
     CONSTRAINT ck_sales_quotation_status CHECK
         (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'EXPIRED', 'REVISED', 'CONVERTED')),
-    CONSTRAINT ck_sales_quotation_revision CHECK (revision >= 0)
+    CONSTRAINT ck_sales_quotation_revision CHECK (revision >= 0),
+    CONSTRAINT ck_sales_quotation_lock_version CHECK (lock_version >= 0)
 );
 
 CREATE TABLE sales_quotation_line (
@@ -104,12 +106,14 @@ CREATE TABLE sales_order (
     currency_id uuid NOT NULL,
     status varchar(32) NOT NULL,
     revision integer NOT NULL,
+    lock_version integer NOT NULL DEFAULT 0,
     requested_delivery_date date,
     created_at timestamptz NOT NULL,
     actor varchar(160) NOT NULL,
     CONSTRAINT ck_sales_order_status CHECK
         (status IN ('DRAFT', 'APPROVED', 'PARTIALLY_RESERVED', 'PARTIALLY_DELIVERED', 'DELIVERED', 'CANCELLED')),
-    CONSTRAINT ck_sales_order_revision CHECK (revision >= 0)
+    CONSTRAINT ck_sales_order_revision CHECK (revision >= 0),
+    CONSTRAINT ck_sales_order_lock_version CHECK (lock_version >= 0)
 );
 
 CREATE TABLE sales_order_line (

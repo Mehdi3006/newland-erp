@@ -3,6 +3,7 @@ package com.newland.erp.sales.infrastructure;
 import com.newland.erp.sales.application.SalesRepository;
 import com.newland.erp.sales.domain.Customer;
 import com.newland.erp.sales.domain.CustomerStatus;
+import com.newland.erp.sales.domain.SalesConflictException;
 import com.newland.erp.sales.domain.SalesLine;
 import com.newland.erp.sales.domain.SalesOrder;
 import com.newland.erp.sales.domain.SalesOrderRevision;
@@ -145,21 +146,28 @@ public final class JooqSalesRepository implements SalesRepository {
 
     private void insertOrUpdateQuotation(final SalesQuotation quotation, final boolean update) {
         if (update) {
-            dsl.update(table("sales_quotation")).set(text("status"), quotation.status().name())
-                    .set(integer("revision"), quotation.revision()).where(id().eq(quotation.id())).execute();
+            final int updated = dsl.update(table("sales_quotation")).set(text("status"), quotation.status().name())
+                    .set(integer("revision"), quotation.revision())
+                    .set(integer("lock_version"), quotation.lockVersion() + 1)
+                    .where(id().eq(quotation.id()).and(integer("lock_version").eq(quotation.lockVersion())))
+                    .execute();
+            if (updated != 1) {
+                throw new SalesConflictException("Sales quotation was modified concurrently.");
+            }
             dsl.deleteFrom(table("sales_quotation_line")).where(uuid("quotation_id").eq(quotation.id())).execute();
         } else {
             dsl.insertInto(table("sales_quotation"))
                     .columns(id(), text("quotation_number"), text("idempotency_key"), uuid("customer_id"),
                             uuid("company_id"), uuid("branch_id"), uuid("warehouse_id"), uuid("sales_channel_id"),
                             uuid("currency_id"), uuid("payment_terms_id"), uuid("shipping_method_id"),
-                            uuid("incoterms_id"), text("status"), integer("revision"), localDate("expires_on"),
-                            instant("created_at"), text("actor"))
+                            uuid("incoterms_id"), text("status"), integer("revision"), integer("lock_version"),
+                            localDate("expires_on"), instant("created_at"), text("actor"))
                     .values(quotation.id(), quotation.quotationNumber(), quotation.idempotencyKey(),
                             quotation.customerId(), quotation.companyId(), quotation.branchId(),
                             quotation.warehouseId(), quotation.salesChannelId(), quotation.currencyId(),
                             quotation.paymentTermsId(), quotation.shippingMethodId(), quotation.incotermsId(),
-                            quotation.status().name(), quotation.revision(), quotation.expiresOn(),
+                            quotation.status().name(), quotation.revision(), quotation.lockVersion(),
+                            quotation.expiresOn(),
                             quotation.createdAt(), quotation.actor())
                     .execute();
         }
@@ -168,19 +176,24 @@ public final class JooqSalesRepository implements SalesRepository {
 
     private void insertOrUpdateOrder(final SalesOrder order, final boolean update) {
         if (update) {
-            dsl.update(table("sales_order")).set(text("status"), order.status().name())
-                    .set(integer("revision"), order.revision()).where(id().eq(order.id())).execute();
+            final int updated = dsl.update(table("sales_order")).set(text("status"), order.status().name())
+                    .set(integer("revision"), order.revision()).set(integer("lock_version"), order.lockVersion() + 1)
+                    .where(id().eq(order.id()).and(integer("lock_version").eq(order.lockVersion()))).execute();
+            if (updated != 1) {
+                throw new SalesConflictException("Sales order was modified concurrently.");
+            }
             dsl.deleteFrom(table("sales_order_line")).where(uuid("sales_order_id").eq(order.id())).execute();
         } else {
             dsl.insertInto(table("sales_order"))
                     .columns(id(), text("order_number"), text("idempotency_key"), uuid("quotation_id"),
                             uuid("customer_id"), uuid("company_id"), uuid("branch_id"), uuid("warehouse_id"),
                             uuid("sales_channel_id"), uuid("currency_id"), text("status"), integer("revision"),
-                            localDate("requested_delivery_date"), instant("created_at"), text("actor"))
+                            integer("lock_version"), localDate("requested_delivery_date"), instant("created_at"),
+                            text("actor"))
                     .values(order.id(), order.orderNumber(), order.idempotencyKey(), order.quotationId(),
                             order.customerId(), order.companyId(), order.branchId(), order.warehouseId(),
                             order.salesChannelId(), order.currencyId(), order.status().name(), order.revision(),
-                            order.requestedDeliveryDate(), order.createdAt(), order.actor())
+                            order.lockVersion(), order.requestedDeliveryDate(), order.createdAt(), order.actor())
                     .execute();
         }
         order.lines().forEach(line -> dsl.insertInto(table("sales_order_line"))
@@ -211,7 +224,8 @@ public final class JooqSalesRepository implements SalesRepository {
                 record.get(uuid("payment_terms_id")), record.get(uuid("shipping_method_id")),
                 record.get(uuid("incoterms_id")), SalesQuotationStatus.valueOf(record.get(text("status"))),
                 record.get(integer("revision")), lines("sales_quotation_line", "quotation_id", quotationId),
-                record.get(localDate("expires_on")), instantValue(record, "created_at"), record.get(text("actor")));
+                record.get(integer("lock_version")), record.get(localDate("expires_on")),
+                instantValue(record, "created_at"), record.get(text("actor")));
     }
 
     private SalesOrder salesOrder(final Record record) {
@@ -221,8 +235,9 @@ public final class JooqSalesRepository implements SalesRepository {
                 record.get(uuid("branch_id")), record.get(uuid("warehouse_id")),
                 record.get(uuid("sales_channel_id")), record.get(uuid("currency_id")),
                 SalesOrderStatus.valueOf(record.get(text("status"))), record.get(integer("revision")),
-                orderLines(orderId), record.get(localDate("requested_delivery_date")),
-                instantValue(record, "created_at"), record.get(text("actor")));
+                orderLines(orderId), record.get(integer("lock_version")),
+                record.get(localDate("requested_delivery_date")), instantValue(record, "created_at"),
+                record.get(text("actor")));
     }
 
     private void insertLine(final String tableName, final String parentColumn, final UUID parentId,

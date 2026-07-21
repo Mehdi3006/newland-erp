@@ -9,7 +9,7 @@ public record SalesQuotation(UUID id, String quotationNumber, String idempotency
                              UUID companyId, UUID branchId, UUID warehouseId, UUID salesChannelId,
                              UUID currencyId, UUID paymentTermsId, UUID shippingMethodId, UUID incotermsId,
                              SalesQuotationStatus status, int revision, List<SalesLine> lines,
-                             LocalDate expiresOn, Instant createdAt, String actor) {
+                             int lockVersion, LocalDate expiresOn, Instant createdAt, String actor) {
     public SalesQuotation {
         if (id == null || customerId == null || companyId == null || branchId == null || warehouseId == null
                 || salesChannelId == null || currencyId == null || status == null || createdAt == null) {
@@ -24,6 +24,9 @@ public record SalesQuotation(UUID id, String quotationNumber, String idempotency
         }
         if (revision < 0) {
             throw new IllegalArgumentException("Sales quotation revision cannot be negative.");
+        }
+        if (lockVersion < 0) {
+            throw new IllegalArgumentException("Sales quotation lock version cannot be negative.");
         }
     }
 
@@ -41,6 +44,13 @@ public record SalesQuotation(UUID id, String quotationNumber, String idempotency
         return withStatus(SalesQuotationStatus.APPROVED);
     }
 
+    public SalesQuotation reject() {
+        if (status != SalesQuotationStatus.SUBMITTED) {
+            throw new SalesConflictException("Only submitted quotations can be rejected.");
+        }
+        return withStatus(SalesQuotationStatus.REJECTED);
+    }
+
     public SalesQuotation expire(final LocalDate today) {
         if (expiresOn == null || !expiresOn.isBefore(today)) {
             throw new SalesConflictException("Quotation is not expired.");
@@ -54,7 +64,7 @@ public record SalesQuotation(UUID id, String quotationNumber, String idempotency
         }
         return new SalesQuotation(id, quotationNumber, idempotencyKey, customerId, companyId, branchId,
                 warehouseId, salesChannelId, currencyId, paymentTermsId, shippingMethodId, incotermsId,
-                SalesQuotationStatus.DRAFT, revision + 1, revisedLines, expiresOn, createdAt, actor);
+                SalesQuotationStatus.DRAFT, revision + 1, revisedLines, lockVersion, expiresOn, createdAt, actor);
     }
 
     public SalesQuotation converted() {
@@ -67,6 +77,6 @@ public record SalesQuotation(UUID id, String quotationNumber, String idempotency
     private SalesQuotation withStatus(final SalesQuotationStatus nextStatus) {
         return new SalesQuotation(id, quotationNumber, idempotencyKey, customerId, companyId, branchId,
                 warehouseId, salesChannelId, currencyId, paymentTermsId, shippingMethodId, incotermsId, nextStatus,
-                revision, lines, expiresOn, createdAt, actor);
+                revision, lines, lockVersion, expiresOn, createdAt, actor);
     }
 }

@@ -80,6 +80,13 @@ public final class SalesController {
                 quotationId, actor)));
     }
 
+    @PostMapping("/quotations/{quotationId}/reject")
+    public SalesDtos.QuotationResponse rejectQuotation(@PathVariable final UUID quotationId,
+            @RequestHeader(name = ACTOR_HEADER, defaultValue = "system") final String actor) {
+        return SalesDtos.QuotationResponse.from(service.rejectQuotation(new SalesCommands.RejectQuotation(
+                quotationId, actor)));
+    }
+
     @PostMapping("/quotations/{quotationId}/revise")
     public SalesDtos.QuotationResponse reviseQuotation(@PathVariable final UUID quotationId,
             @Valid @RequestBody final SalesDtos.ReviseQuotationRequest request,

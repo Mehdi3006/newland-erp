@@ -62,6 +62,14 @@ final class SalesDomainTest {
     }
 
     @Test
+    void submittedQuotationCanBeRejectedOnce() {
+        final SalesQuotation rejected = quotation().submit().reject();
+
+        assertThat(rejected.status()).isEqualTo(SalesQuotationStatus.REJECTED);
+        assertThatThrownBy(rejected::reject).isInstanceOf(SalesConflictException.class);
+    }
+
+    @Test
     void expiredQuotationCannotConvertNormally() {
         final SalesQuotation expired = quotation().submit().approve().expire(LocalDate.parse("2026-08-01"));
 
@@ -78,13 +86,13 @@ final class SalesDomainTest {
         return new SalesQuotation(UUID.randomUUID(), "SQ-1", "idem-q", UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), SalesQuotationStatus.DRAFT, 0, List.of(line("10")),
-                LocalDate.parse("2026-07-01"), Instant.now(), "architect");
+                0, LocalDate.parse("2026-07-01"), Instant.now(), "architect");
     }
 
     static SalesOrder order() {
         return new SalesOrder(UUID.randomUUID(), "SO-1", "idem-o", UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                SalesOrderStatus.DRAFT, 0, List.of(orderLine("10")), LocalDate.parse("2026-08-01"),
+                SalesOrderStatus.DRAFT, 0, List.of(orderLine("10")), 0, LocalDate.parse("2026-08-01"),
                 Instant.now(), "architect");
     }
 

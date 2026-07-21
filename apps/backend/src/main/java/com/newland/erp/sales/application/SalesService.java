@@ -96,7 +96,7 @@ public final class SalesService {
                 numbers.nextNumber("SQ"), command.idempotencyKey(), command.customerId(), command.companyId(),
                 command.branchId(), command.warehouseId(), command.salesChannelId(), command.currencyId(),
                 command.paymentTermsId(), command.shippingMethodId(), command.incotermsId(),
-                SalesQuotationStatus.SUBMITTED, 0, command.lines(), command.expiresOn(), now(), command.actor()));
+                SalesQuotationStatus.SUBMITTED, 0, command.lines(), 0, command.expiresOn(), now(), command.actor()));
         command.attachmentIds().forEach(attachmentId -> attachments.attach(quotation.id(), attachmentId));
         audit.record(command.actor(), "SALES_QUOTATION_SUBMITTED", quotation.id());
         events.publish("SalesQuotationSubmitted", quotation.id());
@@ -109,6 +109,15 @@ public final class SalesService {
         final SalesQuotation quotation = quotation(command.quotationId()).approve();
         repository.updateQuotation(quotation);
         audit.record(command.actor(), "SALES_QUOTATION_APPROVED", quotation.id());
+        return quotation;
+    }
+
+    @Transactional
+    public SalesQuotation rejectQuotation(final SalesCommands.RejectQuotation command) {
+        authorization.requirePermission(command.actor(), "sales.quotation.reject");
+        final SalesQuotation quotation = quotation(command.quotationId()).reject();
+        repository.updateQuotation(quotation);
+        audit.record(command.actor(), "SALES_QUOTATION_REJECTED", quotation.id());
         return quotation;
     }
 
@@ -160,7 +169,7 @@ public final class SalesService {
         final SalesOrder order = repository.insertSalesOrder(new SalesOrder(UUID.randomUUID(), numbers.nextNumber("SO"),
                 command.idempotencyKey(), command.quotationId(), command.customerId(), command.companyId(),
                 command.branchId(), command.warehouseId(), command.salesChannelId(), command.currencyId(),
-                SalesOrderStatus.DRAFT, 0, command.lines(), command.requestedDeliveryDate(), now(),
+                SalesOrderStatus.DRAFT, 0, command.lines(), 0, command.requestedDeliveryDate(), now(),
                 command.actor()));
         command.attachmentIds().forEach(attachmentId -> attachments.attach(order.id(), attachmentId));
         audit.record(command.actor(), "SALES_ORDER_CREATED", order.id());
