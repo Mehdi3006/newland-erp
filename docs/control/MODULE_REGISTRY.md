@@ -13,7 +13,7 @@ This registry tracks business architecture readiness. It is not a code module re
 | Import Logistics               | Defined                  | Not started           | Requires customs/logistics decisions.                              |
 | Quality Management             | Defined                  | Not started           | Requires inspection-policy decisions.                              |
 | Sales                          | Defined                  | Implemented           | P3.6 approved and merged; no AR/accounting/pricing/stock mutation. |
-| Finance                        | Defined                  | P3.7 implementation   | Foundation only; no AP/AR/automatic subledger posting.             |
+| Finance                        | Defined                  | Implemented           | P3.7 approved and merged; no AP/AR/automatic subledger posting.    |
 | CRM                            | Defined                  | Not started           | Customer/Supplier/Business Partner decision pending.               |
 | Service and Warranty           | Defined                  | Not started           | Requires warranty policy.                                          |
 | General Ledger                 | Defined                  | Not started           | Requires fiscal, tax, currency, COA decisions.                     |

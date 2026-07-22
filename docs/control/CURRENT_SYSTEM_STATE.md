@@ -1,6 +1,6 @@
 # Current System State
 
-Status: Phase P3.7 Finance Foundation implementation on branch `codex/p3-7-finance-foundation`.
+Status: Phase P3.7 Finance Foundation is approved, merged, and part of `main`.
 
 ## Phase State
 
@@ -14,7 +14,7 @@ Status: Phase P3.7 Finance Foundation implementation on branch `codex/p3-7-finan
 - P3.4 Inventory Foundation is approved, merged, and part of `main`.
 - P3.5 Procurement Foundation is approved, merged, and part of `main`.
 - P3.6 Sales Foundation is approved, merged, and part of `main`.
-- P3.7 Finance Foundation is under implementation and review on this branch.
+- P3.7 Finance Foundation is approved, merged, and part of `main`.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
