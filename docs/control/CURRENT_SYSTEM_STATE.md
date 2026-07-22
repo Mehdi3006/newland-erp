@@ -15,6 +15,8 @@ Status: Phase P3.7 Finance Foundation is approved, merged, and part of `main`.
 - P3.5 Procurement Foundation is approved, merged, and part of `main`.
 - P3.6 Sales Foundation is approved, merged, and part of `main`.
 - P3.7 Finance Foundation is approved, merged, and part of `main`.
+- P3.8 Financial Posting Infrastructure is under implementation on this branch; no operational
+  module is connected to automatic posting.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 

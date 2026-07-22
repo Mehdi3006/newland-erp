@@ -27,4 +27,18 @@ final class FinanceArchitectureTest {
             "org.jooq..")
         .check(new ClassFileImporter().importPackages("com.newland.erp.finance"));
   }
+
+  @Test
+  void postingDomainHasNoInfrastructureDependency() {
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAPackage("com.newland.erp.finance.posting.domain..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "com.newland.erp.finance.posting.infrastructure..",
+            "org.springframework..",
+            "org.jooq..")
+        .check(new ClassFileImporter().importPackages("com.newland.erp.finance.posting"));
+  }
 }

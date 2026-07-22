@@ -96,6 +96,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V7__procurement_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V9__finance_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V10__finance_posting_infrastructure.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -219,6 +220,12 @@ const approvedFinanceTables = new Set([
   'finance_journal_line',
   'finance_journal_reversal',
 ]);
+const approvedFinancePostingTables = new Set([
+  'finance_accounting_event',
+  'finance_posting_request',
+  'finance_posting_rule',
+  'finance_posting_rule_line',
+]);
 
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -326,7 +333,13 @@ function boundedContextLayer(normalizedPath) {
   }
   const activeMarker = `/com/newland/erp/${context}/`;
   const markerIndex = normalizedPath.indexOf(activeMarker);
-  const afterMarker = normalizedPath.slice(markerIndex + activeMarker.length);
+  let afterMarker = normalizedPath.slice(markerIndex + activeMarker.length);
+  if (afterMarker.startsWith('posting/')) {
+    afterMarker = afterMarker.slice('posting/'.length);
+    if (!afterMarker.includes('/')) {
+      return 'application';
+    }
+  }
   const layer = afterMarker.split('/')[0];
   return approvedBoundedContextLayers.has(layer) ? layer : undefined;
 }
@@ -416,7 +429,8 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedInventoryTables.has(tableName) &&
       !approvedProcurementTables.has(tableName) &&
       !approvedSalesTables.has(tableName) &&
-      !approvedFinanceTables.has(tableName)
+      !approvedFinanceTables.has(tableName) &&
+      !approvedFinancePostingTables.has(tableName)
     ) {
       return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5/P3.6 tables: ${normalizedPath} (${tableName})`;
     }

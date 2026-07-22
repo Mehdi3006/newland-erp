@@ -1,0 +1,100 @@
+package com.newland.erp.finance.posting.application;
+
+import com.newland.erp.finance.posting.domain.AccountingEvent;
+import com.newland.erp.finance.posting.domain.PostingRequest;
+import com.newland.erp.finance.posting.domain.PostingRule;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+public final class PostingPorts {
+  public interface EventRepository {
+    boolean eventIdExists(UUID eventId);
+
+    java.util.Optional<AccountingEvent> findEvent(UUID eventId);
+
+    java.util.Optional<AccountingEvent> findByIdempotencyKey(String key);
+
+    AccountingEvent saveEvent(AccountingEvent event);
+
+    PostingRequest saveRequest(PostingRequest request);
+
+    java.util.Optional<PostingRequest> findRequest(UUID requestId);
+
+    java.util.Optional<PostingRequest> findRequestByEvent(UUID eventId);
+
+    PostingRequest updateRequest(PostingRequest request);
+  }
+
+  public interface RuleRepository {
+    List<PostingRule> findApplicable(String eventType, UUID companyId, LocalDate date);
+
+    PostingRule save(PostingRule rule);
+
+    List<PostingRule> list();
+  }
+
+  public interface CompanyValidationPort {
+    void requireCompany(UUID companyId);
+  }
+
+  public interface BranchValidationPort {
+    void requireBranch(UUID companyId, UUID branchId);
+  }
+
+  public interface CurrencyValidationPort {
+    void requireCurrency(String currencyCode);
+  }
+
+  public interface ExchangeRateValidationPort {
+    void requireRate(String currencyCode, BigDecimal rate, LocalDate date);
+  }
+
+  public interface AccountingPeriodPort {
+    void requireOpenPeriod(UUID companyId, LocalDate date);
+  }
+
+  public interface AccountResolutionPort {
+    void requireAccount(UUID companyId, UUID accountId);
+
+    UUID resolveAttribute(UUID companyId, String key, Map<String, String> attributes);
+  }
+
+  public interface CostCenterValidationPort {
+    void requireCostCenter(UUID companyId, UUID costCenterId);
+  }
+
+  public interface ProfitCenterValidationPort {
+    void requireProfitCenter(UUID companyId, UUID profitCenterId);
+  }
+
+  public interface FinancialDimensionValidationPort {
+    void requireDimensions(UUID companyId, Map<String, String> dimensions);
+  }
+
+  public interface JournalPostingPort {
+    JournalReference createAndPost(AccountingEvent event, PostingRule rule);
+  }
+
+  public record JournalReference(UUID journalEntryId, String journalNumber) {}
+
+  public interface NumberSeriesPort {
+    String next(String series);
+  }
+
+  public interface AuditPort {
+    void record(String actor, String eventType, UUID aggregateId);
+  }
+
+  public interface TransactionalOutboxPort {
+    void publish(String eventType, UUID aggregateId);
+  }
+
+  public interface CurrentUserPort {
+    String currentUser();
+  }
+
+  private PostingPorts() {}
+}

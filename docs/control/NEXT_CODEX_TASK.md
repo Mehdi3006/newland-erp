@@ -2,10 +2,10 @@
 
 ## Recommended Task: Await Explicit Approval for the Next Phase
 
-P3.7 Finance Foundation is approved, merged, and complete. No subsequent phase may begin until it
-receives explicit architectural approval. Accounts Payable, Accounts Receivable, payments, banking,
-tax filing, fixed assets, budgeting, payroll, consolidation, automatic posting, and reporting remain
-out of scope.
+P3.7 Finance Foundation is approved and merged. P3.8 Financial Posting Infrastructure is the only
+approved active implementation scope. No subsequent phase may begin until it receives explicit
+architectural approval. Accounts Payable, Accounts Receivable, payments, banking, tax filing, fixed
+assets, budgeting, payroll, consolidation, automatic posting, and reporting remain out of scope.
 
 The next task is to await an explicit phase approval; do not start implementation.
 
