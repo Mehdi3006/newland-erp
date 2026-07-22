@@ -69,6 +69,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/gradle.lockfile',
   'apps/backend/src/main/java/com/newland/erp/NewlandErpApplication.java',
   'apps/backend/src/main/java/com/newland/erp/enterprise/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/finance/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/identity/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/inventory/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/masterdata/package-info.java',
@@ -77,6 +78,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/productcatalog/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/sales/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/finance/FinanceArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/inventory/InventoryArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/masterdata/MasterDataArchitectureTest.java',
@@ -93,6 +95,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V6__inventory_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V7__procurement_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V9__finance_foundation.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -101,6 +104,8 @@ const approvedFrontendFiles = new Set([
 const approvedBackendJavaRoots = [
   'apps/backend/src/main/java/com/newland/erp/enterprise/',
   'apps/backend/src/test/java/com/newland/erp/enterprise/',
+  'apps/backend/src/main/java/com/newland/erp/finance/',
+  'apps/backend/src/test/java/com/newland/erp/finance/',
   'apps/backend/src/main/java/com/newland/erp/identity/',
   'apps/backend/src/test/java/com/newland/erp/identity/',
   'apps/backend/src/main/java/com/newland/erp/inventory/',
@@ -202,6 +207,17 @@ const approvedSalesTables = new Set([
   'sales_order',
   'sales_order_line',
   'sales_order_revision',
+]);
+const approvedFinanceTables = new Set([
+  'finance_chart_of_accounts',
+  'finance_account',
+  'finance_fiscal_year',
+  'finance_accounting_period',
+  'finance_cost_center',
+  'finance_profit_center',
+  'finance_journal_entry',
+  'finance_journal_line',
+  'finance_journal_reversal',
 ]);
 
 async function walk(directory) {
@@ -399,7 +415,8 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedProductCatalogTables.has(tableName) &&
       !approvedInventoryTables.has(tableName) &&
       !approvedProcurementTables.has(tableName) &&
-      !approvedSalesTables.has(tableName)
+      !approvedSalesTables.has(tableName) &&
+      !approvedFinanceTables.has(tableName)
     ) {
       return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5/P3.6 tables: ${normalizedPath} (${tableName})`;
     }

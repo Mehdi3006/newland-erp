@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.7 Finance Foundation for chart of accounts, account hierarchy, fiscal years, accounting
+  periods, double-entry journal drafting/posting/reversal, cost and profit centers, currency and
+  exchange-rate snapshots, audit, outbox, and explicit future finance posting ports.
+
 - Phase P3.6 Sales Foundation for customers, contacts, addresses, customer credit profiles, customer
   product references, sales quotations, approvals, revisions, expiry enforcement, sales orders,
   approvals, amendments, cancellation, reservation and delivery request tracking, idempotency

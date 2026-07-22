@@ -1,13 +1,12 @@
 # Next Codex Task
 
-## Recommended Task: Await Explicit Approval for the Next Phase
+## Recommended Task: Complete P3.7 Finance Foundation Implementation and Review
 
-P3.6 Sales Foundation is approved, merged, and complete. No subsequent phase may begin until it
-receives explicit architectural approval. Accounts Receivable, Accounting, customer payment,
-Pricing, Discount, CRM, HR, Manufacturing, Forecasting, Automated Replenishment, and adjacent
-operational ERP module work remain out of scope.
+P3.6 Sales Foundation is approved and merged. P3.7 Finance Foundation is the only approved active
+implementation scope. Accounts Payable, Accounts Receivable, payments, banking, tax filing, fixed
+assets, budgeting, payroll, consolidation, automatic posting, and reporting remain out of scope.
 
-The next task is to await an explicit phase approval; do not start implementation.
+The next task is implementation, validation, and approval handling for Finance Foundation only.
 
 ## Completed P3.6 Scope
 
