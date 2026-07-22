@@ -120,6 +120,9 @@ public record JournalEntry(
       }
       debit = value(debit);
       credit = value(credit);
+      if (debit.signum() < 0 || credit.signum() < 0) {
+        throw new FinanceException("Journal debit and credit amounts cannot be negative.");
+      }
       if ((debit.signum() == 0 && credit.signum() == 0)
           || (debit.signum() > 0 && credit.signum() > 0)) {
         throw new FinanceException(

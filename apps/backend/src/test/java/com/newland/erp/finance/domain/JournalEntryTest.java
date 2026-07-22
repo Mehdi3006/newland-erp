@@ -61,6 +61,7 @@ final class JournalEntryTest {
                 Instant.now(),
                 "a"));
     assertThrows(FinanceException.class, () -> line(BigDecimal.ZERO, BigDecimal.ZERO));
+    assertThrows(FinanceException.class, () -> line(BigDecimal.ONE.negate(), BigDecimal.ZERO));
   }
 
   @Test
@@ -71,5 +72,24 @@ final class JournalEntryTest {
             id, UUID.randomUUID(), "100", "Parent", Account.AccountType.ASSET, null, false, true);
     assertThrows(FinanceException.class, () -> ChartOfAccounts.rejectCycle(id, id, List.of(a)));
     assertThrows(FinanceException.class, a::requirePostable);
+  }
+
+  @Test
+  void rejectsParentFromAnotherCompany() {
+    UUID parentId = UUID.randomUUID();
+    UUID companyId = UUID.randomUUID();
+    Account parent =
+        new Account(
+            parentId,
+            UUID.randomUUID(),
+            "100",
+            "Parent",
+            Account.AccountType.ASSET,
+            null,
+            true,
+            true);
+    assertThrows(
+        FinanceException.class,
+        () -> ChartOfAccounts.requireParentCompany(companyId, parentId, List.of(parent)));
   }
 }

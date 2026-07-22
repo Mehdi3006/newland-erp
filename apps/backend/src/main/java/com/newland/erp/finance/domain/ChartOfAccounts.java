@@ -26,4 +26,18 @@ public record ChartOfAccounts(UUID id, UUID companyId, String name) {
               .orElse(null);
     }
   }
+
+  public static void requireParentCompany(
+      final UUID companyId, final UUID parentId, final Collection<Account> accounts) {
+    if (parentId != null) {
+      final Account parent =
+          accounts.stream()
+              .filter(account -> account.id().equals(parentId))
+              .findFirst()
+              .orElseThrow(() -> new FinanceException("Parent account was not found."));
+      if (!parent.companyId().equals(companyId)) {
+        throw new FinanceException("Parent account must belong to the same company.");
+      }
+    }
+  }
 }

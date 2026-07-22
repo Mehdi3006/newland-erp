@@ -54,10 +54,12 @@ public final class FinanceService {
       throw new FinanceException("Duplicate account code within company scope.");
     }
     final List<Account> accounts = repository.accounts(command.companyId());
-    ChartOfAccounts.rejectCycle(UUID.randomUUID(), command.parentId(), accounts);
+    final UUID accountId = UUID.randomUUID();
+    ChartOfAccounts.rejectCycle(accountId, command.parentId(), accounts);
+    ChartOfAccounts.requireParentCompany(command.companyId(), command.parentId(), accounts);
     final Account account =
         new Account(
-            UUID.randomUUID(),
+            accountId,
             command.companyId(),
             command.code(),
             command.name(),
@@ -166,6 +168,8 @@ public final class FinanceService {
   public JournalEntry reverseJournal(final FinanceCommands.ReverseJournal command) {
     final JournalEntry original = journal(command.journalId());
     authorization.require(command.actor(), "finance.journal.reverse", original.companyId());
+    validatePeriod(
+        original.companyId(), original.fiscalYearId(), original.periodId(), original.postingDate());
     if (original.status() != JournalEntry.JournalStatus.POSTED) {
       throw new FinanceException("Only posted journals can be reversed.");
     }
