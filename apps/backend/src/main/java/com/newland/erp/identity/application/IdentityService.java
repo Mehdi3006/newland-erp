@@ -5,6 +5,7 @@ import com.newland.erp.identity.domain.Capability;
 import com.newland.erp.identity.domain.IdentityConflictException;
 import com.newland.erp.identity.domain.IdentityNotFoundException;
 import com.newland.erp.identity.domain.OrganizationScope;
+import com.newland.erp.identity.domain.ScopeType;
 import com.newland.erp.identity.domain.PasswordCredential;
 import com.newland.erp.identity.domain.Permission;
 import com.newland.erp.identity.domain.RefreshToken;
@@ -160,6 +161,28 @@ public final class IdentityService {
     public AuthorizationDecision decide(final UUID userId, final String capability, final OrganizationScope scope) {
         final boolean granted = resolveCapabilities(userId, scope).contains(capability);
         return new AuthorizationDecision(granted, capability, scope, granted ? "granted" : "missing capability");
+    }
+
+    public AuthorizationDecision decideCompany(
+            final UUID userId, final String capability, final UUID companyId) {
+        return decide(userId, capability, new OrganizationScope(ScopeType.COMPANY, companyId));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasEnterpriseCapability(final UUID userId, final String capability) {
+        user(userId);
+        for (final UserRoleAssignment roleAssignment : repository.listUserRoleAssignments(userId)) {
+            if (roleAssignment.scope().type() != ScopeType.ENTERPRISE) {
+                continue;
+            }
+            for (final RolePermissionAssignment permissionAssignment
+                    : repository.listRolePermissionAssignments(roleAssignment.roleId())) {
+                if (permission(permissionAssignment.permissionId()).capability().value().equals(capability)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Transactional

@@ -26,6 +26,10 @@ public final class PostingPorts {
     java.util.Optional<PostingRequest> findRequestByEvent(UUID eventId);
 
     PostingRequest updateRequest(PostingRequest request);
+
+    java.util.Optional<PostingRequest> claimRequest(UUID requestId, int expectedVersion);
+
+    void lockEvent(UUID eventId);
   }
 
   public interface RuleRepository {
@@ -33,7 +37,19 @@ public final class PostingPorts {
 
     PostingRule save(PostingRule rule);
 
+    PostingRule transition(PostingRule rule, PostingRule.Status expectedStatus);
+
+    java.util.Optional<PostingRule> findRule(UUID postingRuleId);
+
+    java.util.Optional<PostingRule> findLatest(String code, UUID companyId);
+
+    void lockActivationScope(PostingRule candidate);
+
+    List<PostingRule> findActivationConflicts(PostingRule candidate);
+
     List<PostingRule> list();
+
+    List<PostingRule> list(UUID companyId);
   }
 
   public interface CompanyValidationPort {
@@ -72,10 +88,14 @@ public final class PostingPorts {
 
   public interface FinancialDimensionValidationPort {
     void requireDimensions(UUID companyId, Map<String, String> dimensions);
+
+    void requireDimension(UUID companyId, String dimensionCode);
   }
 
   public interface JournalPostingPort {
     JournalReference createAndPost(AccountingEvent event, PostingRule rule);
+
+    JournalReference findReference(UUID journalEntryId);
   }
 
   public record JournalReference(UUID journalEntryId, String journalNumber) {}
@@ -94,6 +114,12 @@ public final class PostingPorts {
 
   public interface CurrentUserPort {
     String currentUser();
+  }
+
+  public interface AuthorizationPort {
+    void require(String actor, String capability, UUID companyId);
+
+    void requireGlobal(String actor, String capability);
   }
 
   private PostingPorts() {}

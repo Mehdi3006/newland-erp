@@ -31,8 +31,8 @@ public record PostingRuleLine(
       throw new PostingException("Event account resolution requires an attribute key.");
     }
     if (amountExpression == AmountExpression.CONSTANT
-        && (constantAmount == null || constantAmount.signum() < 0)) {
-      throw new PostingException("Constant amount must be non-negative.");
+        && (constantAmount == null || constantAmount.signum() <= 0)) {
+      throw new PostingException("Constant amount must be positive.");
     }
     dimensionMappings = dimensionMappings == null ? Map.of() : Map.copyOf(dimensionMappings);
   }

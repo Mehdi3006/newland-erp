@@ -2,9 +2,9 @@ package com.newland.erp.finance.posting.api;
 
 import com.newland.erp.finance.posting.application.FinancialPostingPort;
 import com.newland.erp.finance.posting.application.PostingService;
+import com.newland.erp.finance.posting.api.PostingApiDtos.PostingRequestResponse;
+import com.newland.erp.finance.posting.api.PostingApiDtos.PostingResultResponse;
 import com.newland.erp.finance.posting.domain.AccountingEvent;
-import com.newland.erp.finance.posting.domain.PostingRequest;
-import com.newland.erp.finance.posting.domain.PostingResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,32 +26,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/finance/posting")
 public final class PostingController {
   private final FinancialPostingPort posting;
+  private final com.newland.erp.finance.posting.application.PostingPorts.CurrentUserPort users;
 
-  public PostingController(final PostingService postingService) {
+  public PostingController(
+      final PostingService postingService,
+      final com.newland.erp.finance.posting.application.PostingPorts.CurrentUserPort currentUsers) {
     posting = postingService;
+    users = currentUsers;
   }
 
   @PostMapping("/events")
   @ResponseStatus(HttpStatus.ACCEPTED)
-  public PostingResult submit(
-      @Valid @RequestBody final EventRequest request,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
-    return posting.submit(request.toDomain(actor));
+  public PostingResultResponse submit(@Valid @RequestBody final EventRequest request) {
+    return PostingResultResponse.from(posting.submit(request.toDomain(users.currentUser())));
   }
 
   @PostMapping("/events/preview")
-  public PostingResult preview(@Valid @RequestBody final EventRequest request) {
-    return posting.preview(request.toDomain("preview"));
+  public PostingResultResponse preview(@Valid @RequestBody final EventRequest request) {
+    return PostingResultResponse.from(posting.preview(request.toDomain(users.currentUser())));
   }
 
   @GetMapping("/requests/{id}")
-  public PostingRequest status(@PathVariable final UUID id) {
-    return posting.status(id);
+  public PostingRequestResponse status(@PathVariable final UUID id) {
+    return PostingRequestResponse.from(posting.status(id));
   }
 
   @PostMapping("/requests/{id}/retry")
-  public PostingResult retry(@PathVariable final UUID id) {
-    return posting.retry(id);
+  public PostingResultResponse retry(@PathVariable final UUID id) {
+    return PostingResultResponse.from(posting.retry(id));
   }
 
   public record EventRequest(

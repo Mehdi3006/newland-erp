@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public record AccountingEvent(
@@ -56,5 +57,39 @@ public record AccountingEvent(
     }
     dimensions = dimensions == null ? Map.of() : Map.copyOf(dimensions);
     attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
+  }
+
+  /**
+   * Compares the durable idempotency payload while excluding the ingestion timestamp. A retried
+   * HTTP request receives a new {@code occurredAt}, but every caller-controlled business field
+   * must still match the accepted event.
+   */
+  public boolean hasSameIdempotencyPayload(final AccountingEvent candidate) {
+    return candidate != null
+        && Objects.equals(eventId, candidate.eventId)
+        && Objects.equals(idempotencyKey, candidate.idempotencyKey)
+        && Objects.equals(eventType, candidate.eventType)
+        && Objects.equals(sourceModule, candidate.sourceModule)
+        && Objects.equals(sourceDocumentType, candidate.sourceDocumentType)
+        && Objects.equals(sourceDocumentId, candidate.sourceDocumentId)
+        && Objects.equals(sourceDocumentNumber, candidate.sourceDocumentNumber)
+        && Objects.equals(companyId, candidate.companyId)
+        && Objects.equals(branchId, candidate.branchId)
+        && Objects.equals(eventDate, candidate.eventDate)
+        && Objects.equals(accountingDate, candidate.accountingDate)
+        && Objects.equals(currencyCode, candidate.currencyCode)
+        && sameAmount(exchangeRate, candidate.exchangeRate)
+        && sameAmount(amount, candidate.amount)
+        && sameAmount(taxAmount, candidate.taxAmount)
+        && sameAmount(netAmount, candidate.netAmount)
+        && Objects.equals(description, candidate.description)
+        && Objects.equals(dimensions, candidate.dimensions)
+        && Objects.equals(attributes, candidate.attributes)
+        && Objects.equals(submittedBy, candidate.submittedBy)
+        && version == candidate.version;
+  }
+
+  private static boolean sameAmount(final BigDecimal first, final BigDecimal second) {
+    return first == null ? second == null : second != null && first.compareTo(second) == 0;
   }
 }

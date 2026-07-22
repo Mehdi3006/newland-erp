@@ -3,10 +3,12 @@ package com.newland.erp.finance.infrastructure;
 import com.newland.erp.finance.application.FinanceRepository;
 import com.newland.erp.finance.domain.Account;
 import com.newland.erp.finance.domain.AccountingPeriod;
+import com.newland.erp.finance.domain.CostCenter;
 import com.newland.erp.finance.domain.FinanceException;
 import com.newland.erp.finance.domain.FiscalYear;
 import com.newland.erp.finance.domain.JournalEntry;
 import com.newland.erp.finance.domain.JournalReversal;
+import com.newland.erp.finance.domain.ProfitCenter;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -46,6 +48,54 @@ public final class JooqFinanceRepository implements FinanceRepository {
     return dsl.selectFrom(DSL.table("finance_account"))
         .where(DSL.field("company_id", UUID.class).eq(companyId))
         .fetch(this::account);
+  }
+
+  @Override
+  public Optional<Account> findAccount(final UUID companyId, final UUID accountId) {
+    return dsl.selectFrom(DSL.table("finance_account"))
+        .where(DSL.field("company_id", UUID.class).eq(companyId))
+        .and(DSL.field("id", UUID.class).eq(accountId))
+        .fetchOptional(this::account);
+  }
+
+  @Override
+  public Optional<CostCenter> findCostCenter(final UUID companyId, final UUID costCenterId) {
+    return dsl.selectFrom(DSL.table("finance_cost_center"))
+        .where(DSL.field("company_id", UUID.class).eq(companyId))
+        .and(DSL.field("id", UUID.class).eq(costCenterId))
+        .fetchOptional(
+            row ->
+                new CostCenter(
+                    row.get("id", UUID.class),
+                    row.get("company_id", UUID.class),
+                    row.get("code", String.class),
+                    row.get("active", Boolean.class)));
+  }
+
+  @Override
+  public Optional<ProfitCenter> findProfitCenter(
+      final UUID companyId, final UUID profitCenterId) {
+    return dsl.selectFrom(DSL.table("finance_profit_center"))
+        .where(DSL.field("company_id", UUID.class).eq(companyId))
+        .and(DSL.field("id", UUID.class).eq(profitCenterId))
+        .fetchOptional(
+            row ->
+                new ProfitCenter(
+                    row.get("id", UUID.class),
+                    row.get("company_id", UUID.class),
+                    row.get("code", String.class),
+                    row.get("active", Boolean.class)));
+  }
+
+  @Override
+  public boolean financialDimensionIsActive(
+      final UUID companyId, final String dimensionCode) {
+    return dsl.fetchExists(
+        DSL.table("finance_financial_dimension"),
+        DSL.field("company_id", UUID.class)
+            .eq(companyId)
+            .and(DSL.field("code", String.class).eq(dimensionCode))
+            .and(DSL.field("active", Boolean.class).eq(true)));
   }
 
   @Override
@@ -140,9 +190,35 @@ public final class JooqFinanceRepository implements FinanceRepository {
   }
 
   @Override
+  public Optional<FinanceRepository.PostingPeriod> findOpenPostingPeriod(
+      final UUID companyId, final LocalDate postingDate) {
+    return dsl.select(
+            DSL.field("fy.id", UUID.class), DSL.field("p.id", UUID.class))
+        .from(DSL.table("finance_fiscal_year").as("fy"))
+        .join(DSL.table("finance_accounting_period").as("p"))
+        .on(DSL.field("p.fiscal_year_id", UUID.class).eq(DSL.field("fy.id", UUID.class)))
+        .where(DSL.field("fy.company_id", UUID.class).eq(companyId))
+        .and(DSL.field("fy.closed", Boolean.class).eq(false))
+        .and(DSL.field("p.closed", Boolean.class).eq(false))
+        .and(
+            DSL.val(postingDate)
+                .between(
+                    DSL.field("fy.starts_on", LocalDate.class),
+                    DSL.field("fy.ends_on", LocalDate.class)))
+        .and(
+            DSL.val(postingDate)
+                .between(
+                    DSL.field("p.starts_on", LocalDate.class),
+                    DSL.field("p.ends_on", LocalDate.class)))
+        .limit(1)
+        .fetchOptional(r -> new FinanceRepository.PostingPeriod(r.value1(), r.value2()));
+  }
+
+  @Override
   public JournalEntry saveJournal(final JournalEntry j) {
     final var table = DSL.table("finance_journal_entry");
-    if (dsl.fetchExists(table, DSL.field("id", UUID.class).eq(j.id()))) {
+    final boolean exists = dsl.fetchExists(table, DSL.field("id", UUID.class).eq(j.id()));
+    if (exists) {
       final int updated =
           dsl.update(table)
               .set(DSL.field("status", String.class), j.status().name())
@@ -155,9 +231,11 @@ public final class JooqFinanceRepository implements FinanceRepository {
       if (updated != 1) {
         throw new FinanceException("Journal was modified concurrently.");
       }
-      dsl.deleteFrom(DSL.table("finance_journal_line"))
-          .where(DSL.field("journal_id", UUID.class).eq(j.id()))
-          .execute();
+      if (j.status() == JournalEntry.JournalStatus.DRAFT) {
+        dsl.deleteFrom(DSL.table("finance_journal_line"))
+            .where(DSL.field("journal_id", UUID.class).eq(j.id()))
+            .execute();
+      }
     } else {
       dsl.insertInto(table)
           .columns(
@@ -190,10 +268,11 @@ public final class JooqFinanceRepository implements FinanceRepository {
               j.actor())
           .execute();
     }
-    j.lines()
-        .forEach(
-            l ->
-                dsl.insertInto(DSL.table("finance_journal_line"))
+    if (!exists || j.status() == JournalEntry.JournalStatus.DRAFT) {
+      j.lines()
+          .forEach(
+              l ->
+                  dsl.insertInto(DSL.table("finance_journal_line"))
                     .columns(
                         DSL.field("id", UUID.class),
                         DSL.field("journal_id", UUID.class),
@@ -218,7 +297,8 @@ public final class JooqFinanceRepository implements FinanceRepository {
                         l.currencyId(),
                         l.currencyAmount(),
                         l.exchangeRateSnapshot())
-                    .execute());
+                      .execute());
+    }
     return j;
   }
 
@@ -226,6 +306,13 @@ public final class JooqFinanceRepository implements FinanceRepository {
   public Optional<JournalEntry> findJournal(final UUID id) {
     return dsl.selectFrom(DSL.table("finance_journal_entry"))
         .where(DSL.field("id", UUID.class).eq(id))
+        .fetchOptional(this::journal);
+  }
+
+  @Override
+  public Optional<JournalEntry> findJournalByIdempotencyKey(final String idempotencyKey) {
+    return dsl.selectFrom(DSL.table("finance_journal_entry"))
+        .where(DSL.field("idempotency_key", String.class).eq(idempotencyKey))
         .fetchOptional(this::journal);
   }
 

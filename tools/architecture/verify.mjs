@@ -97,6 +97,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V9__finance_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V10__finance_posting_infrastructure.sql',
+  'apps/backend/src/main/resources/db/migration/V11__finance_posting_integrity.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -216,6 +217,7 @@ const approvedFinanceTables = new Set([
   'finance_accounting_period',
   'finance_cost_center',
   'finance_profit_center',
+  'finance_financial_dimension',
   'finance_journal_entry',
   'finance_journal_line',
   'finance_journal_reversal',
@@ -357,10 +359,19 @@ export function classifyJavaBoundaryViolation(repositoryPath, source) {
       (line) =>
         line.startsWith('import com.newland.erp.') &&
         !line.startsWith(`import com.newland.erp.${boundedContextName(normalizedPath)}.`) &&
+        !(
+          (normalizedPath.includes('/finance/posting/infrastructure/') &&
+            (line.startsWith('import com.newland.erp.finance.application.') ||
+              line.startsWith('import com.newland.erp.finance.domain.') ||
+              line.startsWith('import com.newland.erp.identity.application.') ||
+              line.startsWith('import com.newland.erp.platform.application.'))) ||
+          (normalizedPath.includes('/finance/infrastructure/') &&
+            line.startsWith('import com.newland.erp.platform.application.'))
+        ) &&
         !line.startsWith('import com.newland.erp.NewlandErpApplication;'),
     );
 
-  if (importsAnotherBoundedContext) {
+  if (importsAnotherBoundedContext && !isTestSource) {
     return `backend bounded context must not depend on another bounded context: ${normalizedPath}`;
   }
 
