@@ -10,12 +10,12 @@ This registry tracks business architecture readiness. It is not a code module re
 | Product Information Management  | Defined                  | Implemented           | P3.3.5 approved and merged; no inventory/pricing.                      |
 | Inventory                       | Defined                  | Implemented           | P3.4 approved and merged.                                              |
 | Procurement                     | Defined                  | Implemented           | P3.5 approved and merged; no AP/accounting/stock mutation.             |
-| Import Logistics                | Defined                  | Not started           | Requires customs/logistics decisions.                                  |
+| Import Logistics                | Defined                  | In review             | P3.9 manual foundation; external integrations remain deferred.         |
 | Quality Management              | Defined                  | Not started           | Requires inspection-policy decisions.                                  |
 | Sales                           | Defined                  | Implemented           | P3.6 approved and merged; no AR/accounting/pricing/stock mutation.     |
 | Finance                         | Defined                  | Implemented           | P3.7 approved and merged; no AP/AR/automatic subledger posting.        |
 | Finance Posting Infrastructure  | Defined                  | Implemented           | P3.8 approved and merged; no Procurement/Sales/Inventory auto-posting. |
-| Procurement-Finance Integration | Defined                  | In review             | P3.9.1 uses only the Finance published posting API for five events.    |
+| Procurement-Finance Integration | Defined                  | Implemented           | P3.9.1 approved and merged.                                            |
 | CRM                             | Defined                  | Not started           | Customer/Supplier/Business Partner decision pending.                   |
 | Service and Warranty            | Defined                  | Not started           | Requires warranty policy.                                              |
 | General Ledger                  | Defined                  | Not started           | Requires fiscal, tax, currency, COA decisions.                         |

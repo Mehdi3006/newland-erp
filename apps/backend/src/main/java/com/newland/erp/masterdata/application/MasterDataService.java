@@ -85,6 +85,24 @@ public final class MasterDataService implements MasterDataReferencePort {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean isActiveReference(final String referenceType, final String referenceCode) {
+        if (referenceType == null || referenceType.isBlank()
+                || referenceCode == null || referenceCode.isBlank()) {
+            return false;
+        }
+        final MasterDataType type;
+        try {
+            type = MasterDataType.fromSlug(referenceType);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+        return repository.findByTypeAndCode(type, referenceCode)
+                .map(MasterDataRecord::active)
+                .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.Optional<ExchangeRateSnapshot> resolveExchangeRate(
             final UUID companyId, final String sourceCurrency, final String targetCurrency,
             final java.time.LocalDate effectiveDate) {
