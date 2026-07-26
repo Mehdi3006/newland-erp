@@ -115,6 +115,11 @@ final class FinancePostingIntegrationAdapterTest {
 
     @Override
     public PostingResult submit(final AccountingEvent event) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PostingResult submitAccepted(final AccountingEvent event) {
       captured.set(event);
       return result(event.eventId());
     }

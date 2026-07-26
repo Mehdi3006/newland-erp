@@ -1,6 +1,5 @@
 package com.newland.erp.procurement.application;
 
-import com.newland.erp.finance.posting.application.integration.FinancePostingIntegrationPort;
 import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
 import com.newland.erp.platform.application.integration.PlatformFeatureFlagPort;
 import com.newland.erp.procurement.domain.ProcurementAccountingEvent;
@@ -16,17 +15,18 @@ public final class ProcurementAccountingService {
   static final String RETRY_CAPABILITY = "procurement.finance.retry";
   static final String PURCHASE_ORDER_FLAG =
       "procurement.finance.purchase-order-approved";
-  private final FinancePostingIntegrationPort finance;
+  static final String OUTBOX_EVENT = "ProcurementAccountingEventPublished";
+  private final ProcurementAccountingPublicationRepository publications;
   private final PlatformAuditOutboxPort platform;
   private final PlatformFeatureFlagPort featureFlags;
   private final ProcurementAccountingPorts.SecurityPort security;
 
   public ProcurementAccountingService(
-      final FinancePostingIntegrationPort financePostingPort,
+      final ProcurementAccountingPublicationRepository publicationRepository,
       final PlatformAuditOutboxPort platformPort,
       final PlatformFeatureFlagPort featureFlagPort,
       final ProcurementAccountingPorts.SecurityPort securityPort) {
-    finance = financePostingPort;
+    publications = publicationRepository;
     platform = platformPort;
     featureFlags = featureFlagPort;
     security = securityPort;
@@ -40,74 +40,72 @@ public final class ProcurementAccountingService {
       throw new IllegalStateException(
           "PurchaseOrderApproved finance posting is disabled by feature flag.");
     }
-    final FinancePostingIntegrationPort.PostingReceipt receipt =
-        finance.publish(
-            new FinancePostingIntegrationPort.AccountingEventMessage(
-                event.eventId(),
-                event.idempotencyKey(),
-                event.eventType().financeEventType(),
-                "PROCUREMENT",
-                event.referenceDocumentType(),
-                event.referenceDocumentId(),
-                event.referenceDocumentNumber(),
-                event.companyId(),
-                event.branchId(),
-                event.eventDate(),
-                event.accountingDate(),
-                event.currencyCode(),
-                event.exchangeRate(),
-                event.amount(),
-                event.taxAmount(),
-                event.netAmount(),
-                event.description(),
-                event.postingDimensions(),
-                event.postingAttributes(),
-                event.occurredAt(),
-                event.actor()));
-    recordPublication(event.actor(), event.eventType().financeEventType(), event.eventId(),
-        receipt.postingRequestId());
-    return PostingReceipt.from(receipt);
+    final var existing = publications.findByIdempotencyKey(event.idempotencyKey());
+    if (existing.isPresent()) {
+      return existing(event, existing.get());
+    }
+    final var sameId = publications.findByEventId(event.eventId());
+    if (sameId.isPresent()) {
+      return existing(event, sameId.get());
+    }
+    if (!publications.insertIfAbsent(event)) {
+      return existing(
+          event,
+          publications
+              .findByIdempotencyKey(event.idempotencyKey())
+              .or(() -> publications.findByEventId(event.eventId()))
+              .orElseThrow());
+    }
+    platform.publishEvent(
+        event.eventId(),
+        "procurement",
+        OUTBOX_EVENT,
+        event.eventId(),
+        Map.of(
+            "idempotencyKey", event.idempotencyKey(),
+            "eventType", event.eventType().financeEventType()));
+    recordPublication(event.actor(), event.eventType().financeEventType(), event.eventId());
+    return PostingReceipt.pending(event.eventId());
   }
 
   @Transactional
   public PostingReceipt retry(
-      final UUID postingRequestId, final UUID companyId, final String actor) {
+      final UUID accountingEventId, final UUID companyId, final String actor) {
     security.requireCompanyCapability(actor, RETRY_CAPABILITY, companyId);
-    final FinancePostingIntegrationPort.PostingReceipt receipt = finance.retry(postingRequestId);
-    platform.recordAudit(
-        actor,
-        "PROCUREMENT_FINANCE_POSTING_RETRIED",
-        "ProcurementAccountingEvent",
-        receipt.accountingEventId(),
-        Map.of("postingRequestId", postingRequestId.toString()));
-    platform.publishEvent(
-        "procurement",
-        "ProcurementFinancePostingRetried",
-        receipt.accountingEventId(),
-        Map.of("postingRequestId", postingRequestId.toString()));
-    return PostingReceipt.from(receipt);
+    final var publication =
+        publications
+            .findByEventId(accountingEventId)
+            .orElseThrow(() -> new IllegalArgumentException("Accounting event not found."));
+    if (!publication.event().companyId().equals(companyId)) {
+      throw new org.springframework.security.access.AccessDeniedException(
+          "Procurement Finance event belongs to another company.");
+    }
+    platform.retryEvent(accountingEventId);
+    return PostingReceipt.from(publication);
   }
 
   private void recordPublication(
       final String actor,
       final String eventType,
-      final UUID eventId,
-      final UUID postingRequestId) {
+      final UUID eventId) {
     final Map<String, String> attributes =
-        Map.of(
-            "eventType", eventType,
-            "postingRequestId", postingRequestId.toString());
+        Map.of("eventType", eventType);
     platform.recordAudit(
         actor,
         "PROCUREMENT_ACCOUNTING_EVENT_PUBLISHED",
         "ProcurementAccountingEvent",
         eventId,
         attributes);
-    platform.publishEvent(
-        "procurement",
-        "ProcurementAccountingEventPublished",
-        eventId,
-        attributes);
+  }
+
+  private static PostingReceipt existing(
+      final ProcurementAccountingEvent candidate,
+      final ProcurementAccountingPublicationRepository.Publication persisted) {
+    if (!persisted.event().hasSamePublicationPayload(candidate)) {
+      throw new IllegalArgumentException(
+          "Idempotency key or event ID was reused with conflicting Procurement data.");
+    }
+    return PostingReceipt.from(persisted);
   }
 
   public record PostingReceipt(
@@ -118,15 +116,20 @@ public final class ProcurementAccountingService {
       String journalNumber,
       String failureCode,
       String failureMessage) {
-    static PostingReceipt from(final FinancePostingIntegrationPort.PostingReceipt receipt) {
+    static PostingReceipt pending(final UUID eventId) {
+      return new PostingReceipt(null, eventId, "PENDING", null, null, null, null);
+    }
+
+    static PostingReceipt from(
+        final ProcurementAccountingPublicationRepository.Publication publication) {
       return new PostingReceipt(
-          receipt.postingRequestId(),
-          receipt.accountingEventId(),
-          receipt.status(),
-          receipt.journalEntryId(),
-          receipt.journalNumber(),
-          receipt.failureCode(),
-          receipt.failureMessage());
+          publication.postingRequestId(),
+          publication.event().eventId(),
+          publication.status(),
+          publication.journalEntryId(),
+          publication.journalNumber(),
+          publication.failureCode(),
+          publication.failureMessage());
     }
   }
 }

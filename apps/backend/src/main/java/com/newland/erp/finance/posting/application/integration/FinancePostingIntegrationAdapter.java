@@ -7,17 +7,17 @@ import org.springframework.stereotype.Component;
 
 /** Maps the published integration contract to the internal Finance posting domain. */
 @Component
-final class FinancePostingIntegrationAdapter implements FinancePostingIntegrationPort {
+public final class FinancePostingIntegrationAdapter implements FinancePostingIntegrationPort {
   private final FinancialPostingPort posting;
 
-  FinancePostingIntegrationAdapter(final FinancialPostingPort financialPostingPort) {
+  public FinancePostingIntegrationAdapter(final FinancialPostingPort financialPostingPort) {
     posting = financialPostingPort;
   }
 
   @Override
   public PostingReceipt publish(final AccountingEventMessage message) {
     return receipt(
-        posting.submit(
+        posting.submitAccepted(
             new AccountingEvent(
                 message.eventId(),
                 message.idempotencyKey(),

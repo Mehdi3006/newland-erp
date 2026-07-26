@@ -37,7 +37,7 @@ final class ProcurementMigrationTest {
                      where table_schema = 'public'
                      """)) {
             resultSet.next();
-            assertThat(resultSet.getInt("procurement_tables")).isEqualTo(14);
+            assertThat(resultSet.getInt("procurement_tables")).isEqualTo(15);
             assertThat(resultSet.getInt("forbidden_tables")).isZero();
         }
     }

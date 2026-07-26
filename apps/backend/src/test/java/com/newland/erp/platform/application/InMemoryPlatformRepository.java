@@ -67,6 +67,19 @@ final class InMemoryPlatformRepository implements PlatformRepository {
         replace(messageId, attempts, message -> message.failed(nextAttemptAt, lastError));
     }
 
+    @Override
+    public void retryOutboxEvent(final UUID eventId, final Instant nextAttemptAt) {
+        for (int index = 0; index < outbox.size(); index++) {
+            final OutboxMessage message = outbox.get(index);
+            if (message.event().eventId().equals(eventId)
+                    && message.status() == OutboxStatus.FAILED) {
+                outbox.set(index, message.failed(nextAttemptAt, null));
+                return;
+            }
+        }
+        throw new IllegalStateException("Outbox event is not awaiting retry.");
+    }
+
     private void replace(final UUID id, final int attempts,
                          final java.util.function.UnaryOperator<OutboxMessage> update) {
         for (int index = 0; index < outbox.size(); index++) {

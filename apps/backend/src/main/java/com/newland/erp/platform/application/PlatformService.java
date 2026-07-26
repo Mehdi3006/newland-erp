@@ -76,6 +76,25 @@ public final class PlatformService implements PlatformAuditOutboxPort, PlatformF
     }
 
     @Override
+    @Transactional
+    public void publishEvent(
+            final UUID eventId,
+            final String sourceContext,
+            final String eventType,
+            final UUID aggregateId,
+            final Map<String, String> payload) {
+        final PlatformDomainEvent event = new PlatformDomainEvent(
+                eventId, sourceContext, eventType, aggregateId, now(), payload);
+        repository.insertOutboxMessage(OutboxMessage.pending(event, now()));
+    }
+
+    @Override
+    @Transactional
+    public void retryEvent(final UUID eventId) {
+        repository.retryOutboxEvent(eventId, now());
+    }
+
+    @Override
     public void attachFile(
             final String ownerContext,
             final String ownerType,

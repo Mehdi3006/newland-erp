@@ -130,7 +130,7 @@ final class JooqOutboxDispatcherTest {
     private OutboxDispatcher dispatcher(
             final com.newland.erp.platform.application.DomainEventBus bus, final Instant now) {
         return new OutboxDispatcher(
-                new JooqPlatformRepository(dsl, new ObjectMapper()), bus,
+                new JooqPlatformRepository(dsl, new ObjectMapper()), bus, java.util.List.of(),
                 new DataSourceTransactionManager(dataSource), Clock.fixed(now, ZoneOffset.UTC));
     }
 

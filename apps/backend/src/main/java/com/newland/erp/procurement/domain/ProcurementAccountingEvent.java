@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /** Immutable Procurement-owned business fact submitted to Finance for rule-based posting. */
@@ -77,6 +78,31 @@ public record ProcurementAccountingEvent(
         "referenceDocumentNumber", referenceDocumentNumber);
   }
 
+  public boolean hasSamePublicationPayload(final ProcurementAccountingEvent candidate) {
+    return candidate != null
+        && Objects.equals(eventId, candidate.eventId)
+        && Objects.equals(idempotencyKey, candidate.idempotencyKey)
+        && eventType == candidate.eventType
+        && Objects.equals(referenceDocumentType, candidate.referenceDocumentType)
+        && Objects.equals(referenceDocumentId, candidate.referenceDocumentId)
+        && Objects.equals(referenceDocumentNumber, candidate.referenceDocumentNumber)
+        && Objects.equals(supplierId, candidate.supplierId)
+        && Objects.equals(companyId, candidate.companyId)
+        && Objects.equals(branchId, candidate.branchId)
+        && Objects.equals(eventDate, candidate.eventDate)
+        && Objects.equals(accountingDate, candidate.accountingDate)
+        && Objects.equals(currencyCode, candidate.currencyCode)
+        && sameAmount(exchangeRate, candidate.exchangeRate)
+        && sameAmount(amount, candidate.amount)
+        && sameAmount(taxAmount, candidate.taxAmount)
+        && sameAmount(netAmount, candidate.netAmount)
+        && Objects.equals(costCenterId, candidate.costCenterId)
+        && Objects.equals(profitCenterId, candidate.profitCenterId)
+        && Objects.equals(financialDimensions, candidate.financialDimensions)
+        && Objects.equals(description, candidate.description)
+        && Objects.equals(actor, candidate.actor);
+  }
+
   public enum EventType {
     PURCHASE_ORDER_APPROVED("PurchaseOrderApproved"),
     GOODS_RECEIVED("GoodsReceived"),
@@ -106,5 +132,9 @@ public record ProcurementAccountingEvent(
       throw new IllegalArgumentException("Procurement " + name + " is required.");
     }
     return value.trim();
+  }
+
+  private static boolean sameAmount(final BigDecimal first, final BigDecimal second) {
+    return first == null ? second == null : second != null && first.compareTo(second) == 0;
   }
 }

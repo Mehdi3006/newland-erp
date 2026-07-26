@@ -1,6 +1,7 @@
 package com.newland.erp.platform.application;
 
 import com.newland.erp.platform.domain.OutboxMessage;
+import com.newland.erp.platform.application.integration.PlatformOutboxConsumer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -18,13 +19,16 @@ public final class OutboxDispatcher {
     private static final int BATCH_SIZE = 100;
     private final PlatformRepository repository;
     private final DomainEventBus eventBus;
+    private final List<PlatformOutboxConsumer> consumers;
     private final TransactionTemplate transactions;
     private final Clock clock;
 
     public OutboxDispatcher(final PlatformRepository platformRepository, final DomainEventBus bus,
+                            final List<PlatformOutboxConsumer> outboxConsumers,
                             final PlatformTransactionManager transactionManager, final Clock systemClock) {
         repository = platformRepository;
         eventBus = bus;
+        consumers = List.copyOf(outboxConsumers);
         transactions = new TransactionTemplate(transactionManager);
         clock = systemClock;
     }
@@ -49,6 +53,17 @@ public final class OutboxDispatcher {
 
     private void dispatch(final OutboxMessage message) {
         try {
+            final PlatformOutboxConsumer.OutboxEvent event =
+                    new PlatformOutboxConsumer.OutboxEvent(
+                            message.event().eventId(),
+                            message.event().sourceContext(),
+                            message.event().eventType(),
+                            message.event().aggregateId(),
+                            message.event().occurredAt(),
+                            message.event().payload());
+            consumers.stream()
+                    .filter(consumer -> consumer.supports(event.sourceContext(), event.eventType()))
+                    .forEach(consumer -> consumer.consume(event));
             eventBus.publish(message.event());
             transactions.executeWithoutResult(status -> repository.markOutboxPublished(
                     message.id(), message.attempts(), Instant.now(clock)));

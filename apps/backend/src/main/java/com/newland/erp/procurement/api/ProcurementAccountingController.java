@@ -33,11 +33,11 @@ public final class ProcurementAccountingController {
         service.publish(request.toDomain(security.currentActor())));
   }
 
-  @PostMapping("/{postingRequestId}/retry")
+  @PostMapping("/{accountingEventId}/retry")
   public ProcurementAccountingDtos.PostingResponse retry(
-      @PathVariable final UUID postingRequestId,
+      @PathVariable final UUID accountingEventId,
       @Valid @RequestBody final ProcurementAccountingDtos.RetryRequest request) {
     return ProcurementAccountingDtos.PostingResponse.from(
-        service.retry(postingRequestId, request.companyId(), security.currentActor()));
+        service.retry(accountingEventId, request.companyId(), security.currentActor()));
   }
 }
