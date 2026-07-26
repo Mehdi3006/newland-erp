@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.8 Financial Posting Infrastructure for immutable accounting events, deterministic
+  versioned posting rules, durable posting requests, explicit Finance posting ports, audit, outbox,
+  and idempotent retry boundaries. No operational module is auto-posted.
+
 - Phase P3.7 Finance Foundation for chart of accounts, account hierarchy, fiscal years, accounting
   periods, double-entry journal drafting/posting/reversal, cost and profit centers, currency and
   exchange-rate snapshots, audit, outbox, and explicit future finance posting ports.

@@ -10,6 +10,7 @@ import com.newland.erp.finance.domain.JournalReversal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -162,6 +163,61 @@ public final class FinanceService {
     audit.record(command.actor(), "FINANCE_JOURNAL_POSTED", posted.id());
     outbox.publish("FinanceJournalPosted", posted.id());
     return posted;
+  }
+
+  @Transactional
+  public JournalEntry createAndPostJournal(
+      final String idempotencyKey,
+      final UUID companyId,
+      final UUID branchId,
+      final java.time.LocalDate postingDate,
+      final List<JournalEntry.JournalLine> lines,
+      final String actor) {
+    final var existing = repository.findJournalByIdempotencyKey(idempotencyKey);
+    if (existing.isPresent()) {
+      return resumeIdempotentPosting(
+          existing.get(), companyId, branchId, postingDate, lines, actor);
+    }
+    final FinanceRepository.PostingPeriod period =
+        repository
+            .findOpenPostingPeriod(companyId, postingDate)
+            .orElseThrow(() -> new FinanceException("No open accounting period exists."));
+    final JournalEntry draft =
+        createJournal(
+            new FinanceCommands.CreateJournal(
+                idempotencyKey,
+                companyId,
+                branchId,
+                period.fiscalYearId(),
+                period.periodId(),
+                postingDate,
+                lines,
+                List.of(),
+                actor));
+    return postJournal(new FinanceCommands.PostJournal(draft.id(), actor));
+  }
+
+  private JournalEntry resumeIdempotentPosting(
+      final JournalEntry existing,
+      final UUID companyId,
+      final UUID branchId,
+      final java.time.LocalDate postingDate,
+      final List<JournalEntry.JournalLine> lines,
+      final String actor) {
+    if (!existing.companyId().equals(companyId)
+        || !Objects.equals(existing.branchId(), branchId)
+        || !existing.postingDate().equals(postingDate)
+        || !existing.lines().equals(lines)) {
+      throw new FinanceException("Journal idempotency key was reused with conflicting data.");
+    }
+    authorization.require(actor, "finance.journal.post", companyId);
+    if (existing.status() == JournalEntry.JournalStatus.POSTED) {
+      return existing;
+    }
+    if (existing.status() != JournalEntry.JournalStatus.DRAFT) {
+      throw new FinanceException("Existing idempotent journal cannot be posted.");
+    }
+    return postJournal(new FinanceCommands.PostJournal(existing.id(), actor));
   }
 
   @Transactional

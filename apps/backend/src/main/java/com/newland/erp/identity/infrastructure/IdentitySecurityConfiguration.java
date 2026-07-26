@@ -31,20 +31,34 @@ public class IdentitySecurityConfiguration {
     }
 
     @Bean
-    JwtEncoder jwtEncoder(@Value("${newland.security.jwt.secret:development-only-change-me-32-bytes-minimum}")
+    JwtEncoder jwtEncoder(@Value("${newland.security.jwt.secret}")
                           final String secret) {
-        return new NimbusJwtEncoder(new ImmutableSecret<>(secret.getBytes(StandardCharsets.UTF_8)));
+        return new NimbusJwtEncoder(new ImmutableSecret<>(validatedSecret(secret)));
     }
 
     @Bean
-    JwtDecoder jwtDecoder(@Value("${newland.security.jwt.secret:development-only-change-me-32-bytes-minimum}")
+    JwtDecoder jwtDecoder(@Value("${newland.security.jwt.secret}")
                           final String secret) {
-        final SecretKeySpec key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        final SecretKeySpec key = new SecretKeySpec(validatedSecret(secret), "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
     @Bean
     SecureRandom secureRandom() {
         return new SecureRandom();
+    }
+
+    private static byte[] validatedSecret(final String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("newland.security.jwt.secret must be configured.");
+        }
+        final byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32 || secret.toLowerCase(java.util.Locale.ROOT).contains("change-me")
+                || secret.toLowerCase(java.util.Locale.ROOT).contains("development-only")
+                || secret.chars().distinct().count() < 12) {
+            throw new IllegalStateException(
+                    "newland.security.jwt.secret must contain at least 32 bytes of non-default entropy.");
+        }
+        return bytes;
     }
 }

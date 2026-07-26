@@ -14,6 +14,7 @@ import com.newland.erp.enterprise.application.EnterpriseStructureCommands.Update
 import com.newland.erp.enterprise.application.EnterpriseStructureCommands.UpdateLocation;
 import com.newland.erp.enterprise.application.EnterpriseStructureCommands.UpdateWarehouse;
 import com.newland.erp.enterprise.application.EnterpriseStructureCommands.UpdateZone;
+import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;
 import com.newland.erp.enterprise.domain.AuditMetadata;
 import com.newland.erp.enterprise.domain.Branch;
 import com.newland.erp.enterprise.domain.Company;
@@ -40,7 +41,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-public final class EnterpriseStructureService {
+public final class EnterpriseStructureService implements EnterpriseReferencePort {
     private final EnterpriseStructureRepository repository;
     private final AuthorizationPort authorization;
     private final AuditPort audit;
@@ -59,6 +60,31 @@ public final class EnterpriseStructureService {
         this.audit = auditPort;
         this.events = eventPublisher;
         this.clock = systemClock;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isActiveCompany(final UUID companyId) {
+        return repository.findCompany(companyId)
+                .map(company -> company.status() == LifecycleStatus.ACTIVE)
+                .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isActiveBranch(final UUID companyId, final UUID branchId) {
+        return repository.findBranch(branchId)
+                .filter(branch -> branch.companyId().equals(companyId))
+                .map(branch -> branch.status() == LifecycleStatus.ACTIVE)
+                .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<String> companyBaseCurrency(final UUID companyId) {
+        return repository.findCompany(companyId)
+                .filter(company -> company.status() == LifecycleStatus.ACTIVE)
+                .map(company -> company.baseCurrency().value());
     }
 
     @Transactional

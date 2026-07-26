@@ -20,6 +20,14 @@ public record OutboxMessage(UUID id, PlatformDomainEvent event, OutboxStatus sta
         return new OutboxMessage(UUID.randomUUID(), event, OutboxStatus.PENDING, 0, now, now, null, null);
     }
 
+    public OutboxMessage published(final Instant now) {
+        return new OutboxMessage(id, event, OutboxStatus.PUBLISHED, attempts, nextAttemptAt, createdAt, now, null);
+    }
+
+    public OutboxMessage failed(final Instant nextAttempt, final String error) {
+        return new OutboxMessage(id, event, OutboxStatus.FAILED, attempts, nextAttempt, createdAt, null, error);
+    }
+
     public Map<String, String> payload() {
         return event.payload();
     }

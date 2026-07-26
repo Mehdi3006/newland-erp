@@ -59,6 +59,41 @@ final class IdentityServiceTest {
     }
 
     @Test
+    void grantsRepositoryGlobalCapabilityOnlyThroughSystemRoleAtEnterpriseScope() {
+        final FakeIdentityRepository repository = new FakeIdentityRepository();
+        final IdentityService service = service(repository);
+        final UUID enterpriseId = UUID.randomUUID();
+        final User user = service.createUser(new IdentityCommands.CreateUser(new Username("global-owner"),
+                new EmailAddress("global-owner@example.com"), "Global Owner", "StrongPass123"), "tester");
+        final Permission permission = service.createPermission(new IdentityCommands.CreatePermission(
+                "finance.posting.rule.manage", "Manage global posting rules"), "tester");
+        final Role ordinaryRole = service.createRole(new IdentityCommands.CreateRole("finance-manager",
+                "Finance Manager", null), "tester");
+        service.assignPermission(new IdentityCommands.AssignPermission(ordinaryRole.id(), permission.id()), "tester");
+        service.assignRole(new IdentityCommands.AssignRole(user.id(), ordinaryRole.id(),
+                new OrganizationScope(ScopeType.ENTERPRISE, enterpriseId)), "tester");
+
+        assertThat(service.isSystemEnterpriseCapabilityGranted(
+                user.id(), "finance.posting.rule.manage")).isFalse();
+
+        final Role systemRole = repository.insertRole(new Role(UUID.randomUUID(), "SYSTEM_FINANCE",
+                "System Finance", null, true));
+        service.assignPermission(new IdentityCommands.AssignPermission(systemRole.id(), permission.id()), "tester");
+        service.assignRole(new IdentityCommands.AssignRole(user.id(), systemRole.id(),
+                new OrganizationScope(ScopeType.ENTERPRISE, enterpriseId)), "tester");
+
+        assertThat(service.isSystemEnterpriseCapabilityGranted(
+                user.id(), "finance.posting.rule.manage")).isTrue();
+
+        repository.updateUser(new User(user.id(), user.username(), user.email(), user.displayName(),
+                UserStatus.DISABLED, user.failedLoginAttempts(), user.lockedUntil(), user.passwordExpiresAt(),
+                user.createdAt(), user.updatedAt()));
+
+        assertThat(service.isSystemEnterpriseCapabilityGranted(
+                user.id(), "finance.posting.rule.manage")).isFalse();
+    }
+
+    @Test
     void disabledUserLoginDoesNotMutateAccountState() {
         final FakeIdentityRepository repository = new FakeIdentityRepository();
         final IdentityService service = service(repository);
@@ -88,6 +123,27 @@ final class IdentityServiceTest {
 
         assertThatThrownBy(() -> service.refresh(tokens.refreshToken()))
                 .isInstanceOf(com.newland.erp.identity.domain.AuthenticationFailedException.class);
+    }
+
+    @Test
+    void authorizationRejectsRevokedSessionAndDisabledUserImmediately() {
+        final FakeIdentityRepository repository = new FakeIdentityRepository();
+        final IdentityService service = service(repository);
+        final User user = service.createUser(new IdentityCommands.CreateUser(new Username("session-owner"),
+                new EmailAddress("session-owner@example.com"), "Session Owner", "StrongPass123"), "tester");
+        final AuthTokens tokens = service.login(new IdentityCommands.Login(user.username(), "StrongPass123",
+                "browser", false));
+
+        assertThat(service.isSessionAuthorized(user.id(), tokens.sessionId())).isTrue();
+        service.revokeSession(tokens.sessionId(), "tester");
+        assertThat(service.isSessionAuthorized(user.id(), tokens.sessionId())).isFalse();
+
+        final AuthTokens next = service.login(new IdentityCommands.Login(user.username(), "StrongPass123",
+                "browser", false));
+        repository.updateUser(new User(user.id(), user.username(), user.email(), user.displayName(),
+                UserStatus.DISABLED, user.failedLoginAttempts(), user.lockedUntil(), user.passwordExpiresAt(),
+                user.createdAt(), user.updatedAt()));
+        assertThat(service.isSessionAuthorized(user.id(), next.sessionId())).isFalse();
     }
 
     private static IdentityService service(final FakeIdentityRepository repository) {

@@ -62,4 +62,32 @@ describe('Repository architecture verification', () => {
       ),
     ).toContain('must not depend on another bounded context');
   });
+
+  it('rejects another bounded-context import from test source', () => {
+    expect(
+      classifyJavaBoundaryViolation(
+        'apps/backend/src/test/java/com/newland/erp/finance/LeakyTest.java',
+        [
+          'package com.newland.erp.finance;',
+          'import com.newland.erp.sales.domain.SalesOrder;',
+          '',
+          'final class LeakyTest { }',
+        ].join('\n'),
+      ),
+    ).toContain('must not depend on another bounded context');
+  });
+
+  it('allows a bounded context to consume an explicit integration contract', () => {
+    expect(
+      classifyJavaBoundaryViolation(
+        'apps/backend/src/main/java/com/newland/erp/finance/infrastructure/ReferenceAdapter.java',
+        [
+          'package com.newland.erp.finance.infrastructure;',
+          'import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;',
+          '',
+          'final class ReferenceAdapter { }',
+        ].join('\n'),
+      ),
+    ).toBeUndefined();
+  });
 });

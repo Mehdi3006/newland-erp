@@ -5,6 +5,7 @@ import com.newland.erp.identity.domain.Capability;
 import com.newland.erp.identity.domain.IdentityConflictException;
 import com.newland.erp.identity.domain.IdentityNotFoundException;
 import com.newland.erp.identity.domain.OrganizationScope;
+import com.newland.erp.identity.domain.ScopeType;
 import com.newland.erp.identity.domain.PasswordCredential;
 import com.newland.erp.identity.domain.Permission;
 import com.newland.erp.identity.domain.RefreshToken;
@@ -14,6 +15,7 @@ import com.newland.erp.identity.domain.Session;
 import com.newland.erp.identity.domain.User;
 import com.newland.erp.identity.domain.UserRoleAssignment;
 import com.newland.erp.identity.domain.UserStatus;
+import com.newland.erp.identity.application.integration.IdentityAuthorizationPort;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -29,7 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-public final class IdentityService {
+public final class IdentityService implements IdentityAuthorizationPort {
     private static final Duration ACCESS_TOKEN_TTL = Duration.ofMinutes(15);
     private static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(30);
     private final IdentityRepository repository;
@@ -143,7 +145,9 @@ public final class IdentityService {
 
     @Transactional(readOnly = true)
     public Set<String> resolveCapabilities(final UUID userId, final OrganizationScope scope) {
-        user(userId);
+        if (user(userId).status() != UserStatus.ACTIVE) {
+            return Set.of();
+        }
         final Set<String> capabilities = new LinkedHashSet<>();
         for (final UserRoleAssignment roleAssignment : repository.listUserRoleAssignments(userId)) {
             if (roleAssignment.scope().equals(scope)) {
@@ -160,6 +164,59 @@ public final class IdentityService {
     public AuthorizationDecision decide(final UUID userId, final String capability, final OrganizationScope scope) {
         final boolean granted = resolveCapabilities(userId, scope).contains(capability);
         return new AuthorizationDecision(granted, capability, scope, granted ? "granted" : "missing capability");
+    }
+
+    public AuthorizationDecision decideCompany(
+            final UUID userId, final String capability, final UUID companyId) {
+        return decide(userId, capability, new OrganizationScope(ScopeType.COMPANY, companyId));
+    }
+
+    @Override
+    public boolean isCompanyCapabilityGranted(
+            final UUID userId, final String capability, final UUID companyId) {
+        return decideCompany(userId, capability, companyId).granted();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasEnterpriseCapability(final UUID userId, final String capability) {
+        if (user(userId).status() != UserStatus.ACTIVE) {
+            return false;
+        }
+        for (final UserRoleAssignment roleAssignment : repository.listUserRoleAssignments(userId)) {
+            if (roleAssignment.scope().type() != ScopeType.ENTERPRISE) {
+                continue;
+            }
+            final Role assignedRole = role(roleAssignment.roleId());
+            if (!assignedRole.systemRole()) {
+                continue;
+            }
+            for (final RolePermissionAssignment permissionAssignment
+                    : repository.listRolePermissionAssignments(roleAssignment.roleId())) {
+                if (permission(permissionAssignment.permissionId()).capability().value().equals(capability)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isSystemEnterpriseCapabilityGranted(
+            final UUID userId, final String capability) {
+        return hasEnterpriseCapability(userId, capability);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isSessionAuthorized(final UUID userId, final UUID sessionId) {
+        final User user = repository.findUser(userId).orElse(null);
+        if (user == null || !user.canAuthenticate(now())) {
+            return false;
+        }
+        return repository.findSession(sessionId)
+                .filter(session -> session.userId().equals(userId))
+                .map(session -> session.active(now()))
+                .orElse(false);
     }
 
     @Transactional

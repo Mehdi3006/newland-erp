@@ -63,10 +63,63 @@ public final class JooqPlatformRepository implements PlatformRepository {
     @Override
     public List<OutboxMessage> listPendingOutboxMessages(final int limit) {
         return dsl.selectFrom(table("platform_outbox"))
-                .where(text("status").eq(OutboxStatus.PENDING.name()))
+                .where(text("status").in(OutboxStatus.PENDING.name(), OutboxStatus.FAILED.name()))
                 .orderBy(instant("next_attempt_at"))
                 .limit(limit)
                 .fetch(this::outboxMessage);
+    }
+
+    @Override
+    public List<OutboxMessage> claimOutboxMessages(final int limit, final Instant now,
+                                                   final Instant leaseExpiresAt) {
+        return dsl.resultQuery("""
+                WITH candidates AS (
+                    SELECT id
+                      FROM platform_outbox
+                     WHERE status IN ('PENDING', 'FAILED', 'PROCESSING')
+                       AND next_attempt_at <= CAST(? AS timestamptz)
+                     ORDER BY next_attempt_at, created_at
+                     LIMIT ?
+                     FOR UPDATE SKIP LOCKED
+                )
+                UPDATE platform_outbox AS message
+                   SET status = 'PROCESSING',
+                       attempts = message.attempts + 1,
+                       next_attempt_at = CAST(? AS timestamptz),
+                       last_error = NULL
+                  FROM candidates
+                 WHERE message.id = candidates.id
+                RETURNING message.*
+                """, now, limit, leaseExpiresAt)
+                .fetch(this::outboxMessage);
+    }
+
+    @Override
+    public void markOutboxPublished(final UUID messageId, final int attempts,
+                                    final Instant publishedAt) {
+        final int updated = dsl.update(table("platform_outbox"))
+                .set(text("status"), OutboxStatus.PUBLISHED.name())
+                .set(instant("published_at"), publishedAt)
+                .set(text("last_error"), (String) null)
+                .where(uuid("id").eq(messageId)
+                        .and(text("status").eq(OutboxStatus.PROCESSING.name()))
+                        .and(integer("attempts").eq(attempts)))
+                .execute();
+        requireOutboxTransition(updated);
+    }
+
+    @Override
+    public void markOutboxFailed(final UUID messageId, final int attempts,
+                                 final Instant nextAttemptAt, final String lastError) {
+        final int updated = dsl.update(table("platform_outbox"))
+                .set(text("status"), OutboxStatus.FAILED.name())
+                .set(instant("next_attempt_at"), nextAttemptAt)
+                .set(text("last_error"), lastError)
+                .where(uuid("id").eq(messageId)
+                        .and(text("status").eq(OutboxStatus.PROCESSING.name()))
+                        .and(integer("attempts").eq(attempts)))
+                .execute();
+        requireOutboxTransition(updated);
     }
 
     @Override
@@ -229,6 +282,12 @@ public final class JooqPlatformRepository implements PlatformRepository {
                 record.get(integer("attempts")), auditInstant(record, "next_attempt_at"),
                 auditInstant(record, "created_at"), auditInstant(record, "published_at"),
                 record.get(text("last_error")));
+    }
+
+    private static void requireOutboxTransition(final int updated) {
+        if (updated != 1) {
+            throw new IllegalStateException("Outbox claim is no longer owned by this dispatcher.");
+        }
     }
 
     private AuditRecord auditRecord(final Record record) {

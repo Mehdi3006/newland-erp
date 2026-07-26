@@ -1,6 +1,7 @@
 # Current System State
 
-Status: Phase P3.7 Finance Foundation is approved, merged, and part of `main`.
+Status: Phase P3.8 Financial Posting Infrastructure is implemented on PR #20 and is awaiting its
+release gate.
 
 ## Phase State
 
@@ -15,6 +16,8 @@ Status: Phase P3.7 Finance Foundation is approved, merged, and part of `main`.
 - P3.5 Procurement Foundation is approved, merged, and part of `main`.
 - P3.6 Sales Foundation is approved, merged, and part of `main`.
 - P3.7 Finance Foundation is approved, merged, and part of `main`.
+- P3.8 Financial Posting Infrastructure is implemented on PR #20 and is awaiting its release gate;
+  no operational module is connected to automatic posting.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
@@ -67,6 +70,13 @@ Status: Phase P3.7 Finance Foundation is approved, merged, and part of `main`.
 - Finance Foundation backend slice under `apps/backend/src/main/java/com/newland/erp/finance`.
 - Finance Foundation Flyway migration under
   `apps/backend/src/main/resources/db/migration/V9__finance_foundation.sql`.
+- Financial Posting Infrastructure under
+  `apps/backend/src/main/java/com/newland/erp/finance/posting`.
+- Financial Posting Infrastructure Flyway migrations under
+  `apps/backend/src/main/resources/db/migration/V10__finance_posting_infrastructure.sql`,
+  `V11__finance_posting_integrity.sql`, and `V12__finance_posting_release_guards.sql`.
+- Financial Posting Infrastructure unit, PostgreSQL integration, concurrency, rollback, security,
+  audit, outbox, and architecture tests under `apps/backend/src/test`.
 
 ## Current Business Architecture Baseline
 
@@ -84,6 +94,11 @@ Status: Phase P3.7 Finance Foundation is approved, merged, and part of `main`.
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.8 adds only explicit financial-posting infrastructure: immutable accounting events, versioned
+posting rules, durable and idempotent posting requests, real Finance journal creation/posting,
+transactional audit/outbox records, and retry/concurrency guards. It does not connect Procurement,
+Sales, Inventory, or any other source module to automatic posting.
 
 P3.7 contains only the Finance Foundation. It adds chart of accounts, account hierarchy, fiscal
 years, accounting periods, journals, reversals, cost/profit centers, currency snapshots, and

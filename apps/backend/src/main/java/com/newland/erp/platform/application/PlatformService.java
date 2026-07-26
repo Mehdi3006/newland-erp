@@ -13,6 +13,7 @@ import com.newland.erp.platform.domain.OutboxMessage;
 import com.newland.erp.platform.domain.PlatformDomainEvent;
 import com.newland.erp.platform.domain.PlatformNotFoundException;
 import com.newland.erp.platform.domain.StoredFile;
+import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-public final class PlatformService {
+public final class PlatformService implements PlatformAuditOutboxPort {
     private final PlatformRepository repository;
     private final DomainEventBus eventBus;
     private final FileStoragePort fileStorage;
@@ -45,7 +46,6 @@ public final class PlatformService {
     public OutboxMessage publishEvent(final PlatformCommands.PublishEvent command) {
         final PlatformDomainEvent event = new PlatformDomainEvent(UUID.randomUUID(), command.sourceContext(),
                 command.eventType(), command.aggregateId(), now(), command.payload());
-        eventBus.publish(event);
         return repository.insertOutboxMessage(OutboxMessage.pending(event, now()));
     }
 
@@ -53,6 +53,34 @@ public final class PlatformService {
     public AuditRecord recordAudit(final PlatformCommands.RecordAudit command) {
         return repository.insertAuditRecord(new AuditRecord(UUID.randomUUID(), command.actor(), command.action(),
                 command.targetType(), command.targetId(), now(), command.attributes()));
+    }
+
+    @Override
+    public void recordAudit(
+            final String actor,
+            final String action,
+            final String targetType,
+            final UUID targetId,
+            final Map<String, String> attributes) {
+        recordAudit(new PlatformCommands.RecordAudit(actor, action, targetType, targetId, attributes));
+    }
+
+    @Override
+    public void publishEvent(
+            final String sourceContext,
+            final String eventType,
+            final UUID aggregateId,
+            final Map<String, String> payload) {
+        publishEvent(new PlatformCommands.PublishEvent(sourceContext, eventType, aggregateId, payload));
+    }
+
+    @Override
+    public void attachFile(
+            final String ownerContext,
+            final String ownerType,
+            final UUID ownerId,
+            final UUID fileId) {
+        attachFile(new PlatformCommands.AttachFile(ownerContext, ownerType, ownerId, fileId));
     }
 
     @Transactional

@@ -1,8 +1,11 @@
 package com.newland.erp.finance.infrastructure;
 
 import com.newland.erp.finance.application.FinancePorts;
+import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 import org.springframework.stereotype.Component;
 
 public final class FinanceInfrastructureAdapters {
@@ -47,24 +50,42 @@ public final class FinanceInfrastructureAdapters {
 
   @Component
   public static final class NumberAdapter implements FinancePorts.NumberSeriesPort {
-    private final AtomicLong n = new AtomicLong();
+    private final DSLContext dsl;
+
+    public NumberAdapter(final DSLContext dslContext) {
+      dsl = dslContext;
+    }
 
     public String next(final String s) {
-      return s + "-" + n.incrementAndGet();
+      final Long value =
+          dsl.select(DSL.field("nextval('finance_journal_number_seq')", Long.class))
+              .fetchOne(0, Long.class);
+      return s + "-" + value;
     }
   }
 
   @Component
   public static final class PlatformAdapter
       implements FinancePorts.AuditPort, FinancePorts.OutboxPort, FinancePorts.AttachmentPort {
-    public void record(final String a, final String b, final UUID c) {}
+    private final PlatformAuditOutboxPort platform;
 
-    public void publish(final String a, final UUID b) {}
+    public PlatformAdapter(final PlatformAuditOutboxPort platformPort) {
+      platform = platformPort;
+    }
 
-    public void attach(final UUID a, final UUID b) {
-      if (b == null) {
+    public void record(final String actor, final String action, final UUID id) {
+      platform.recordAudit(actor, action, "FinanceJournal", id, Map.of());
+    }
+
+    public void publish(final String eventType, final UUID id) {
+      platform.publishEvent("finance", eventType, id, Map.of());
+    }
+
+    public void attach(final UUID aggregateId, final UUID attachmentId) {
+      if (attachmentId == null) {
         throw new IllegalArgumentException("Attachment is required.");
       }
+      platform.attachFile("finance", "JournalEntry", aggregateId, attachmentId);
     }
   }
 

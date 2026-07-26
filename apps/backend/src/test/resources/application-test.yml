@@ -1,0 +1,4 @@
+newland:
+  security:
+    jwt:
+      secret: ${NEWLAND_TEST_JWT_SECRET}
