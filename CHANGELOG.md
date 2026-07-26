@@ -9,9 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- Phase P3.9 Import Logistics foundation for approved-PO shipment creation, booking, container
-  loading, customs milestones, and auditable landed-cost drafts without Inventory mutation or
-  accounting posting.
+- Completed Phase P3.9 Import Logistics foundation for approved-PO shipment creation, booking,
+  container loading, lifecycle-safe customs milestones, validated logistics references, and
+  auditable landed-cost drafts without Inventory mutation or accounting posting.
 
 - Phase P3.9.1 Procurement to Finance integration through immutable Procurement accounting events
   and the published Finance Posting Engine API. The integration covers only purchase-order approval

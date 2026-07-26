@@ -1,7 +1,6 @@
 # Current System State
 
-Status: Phase P3.9 Import Logistics is implemented on a feature branch and awaiting architecture
-review.
+Status: Phase P3.9 Import Logistics is approved, merged, and complete on `main`.
 
 ## Phase State
 
@@ -19,7 +18,7 @@ review.
 - P3.8 Financial Posting Infrastructure is approved, merged, and part of `main`; no operational
   module is connected to automatic posting.
 - P3.9.1 Procurement to Finance Integration is approved, merged, and part of `main`.
-- P3.9 Import Logistics is implemented and awaiting review; it is not yet part of `main`.
+- P3.9 Import Logistics is approved, merged, and part of `main`.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
