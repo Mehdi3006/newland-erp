@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-public final class PlatformService implements PlatformAuditOutboxPort, PlatformFeatureFlagPort {
+public class PlatformService implements PlatformAuditOutboxPort, PlatformFeatureFlagPort {
     private final PlatformRepository repository;
     private final DomainEventBus eventBus;
     private final FileStoragePort fileStorage;

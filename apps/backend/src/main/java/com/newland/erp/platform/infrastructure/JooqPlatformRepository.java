@@ -34,7 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public final class JooqPlatformRepository implements PlatformRepository {
+public class JooqPlatformRepository implements PlatformRepository {
     private static final TypeReference<Map<String, String>> STRING_MAP = new TypeReference<>() {
     };
     private final DSLContext dsl;

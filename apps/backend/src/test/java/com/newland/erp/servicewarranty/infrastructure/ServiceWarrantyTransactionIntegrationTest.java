@@ -60,7 +60,6 @@ final class ServiceWarrantyTransactionIntegrationTest {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
-    registry.add("spring.aop.proxy-target-class", () -> "false");
     registry.add(
         "newland.security.jwt.secret",
         () -> "test-only-7aa711f462dd408fb66799e89a10e7d8");

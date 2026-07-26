@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.dao.DataIntegrityViolationException;
 
 @Repository
-public final class JooqServiceWarrantyRepository implements ServiceWarrantyRepository {
+public class JooqServiceWarrantyRepository implements ServiceWarrantyRepository {
   private final DSLContext dsl;
 
   public JooqServiceWarrantyRepository(final DSLContext dslContext) {
