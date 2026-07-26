@@ -10,6 +10,7 @@ import com.newland.erp.finance.application.FinanceService;
 import com.newland.erp.finance.domain.Account;
 import com.newland.erp.finance.domain.AccountingPeriod;
 import com.newland.erp.finance.domain.FiscalYear;
+import com.newland.erp.finance.domain.FinanceException;
 import com.newland.erp.finance.domain.JournalEntry;
 import com.newland.erp.finance.infrastructure.JooqFinanceRepository;
 import com.newland.erp.finance.posting.application.PostingPorts;
@@ -74,6 +75,7 @@ import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.newland.erp.finance.posting.application.PostingService;
 import com.newland.erp.finance.posting.domain.PostingResult;
+import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;
 
 @Testcontainers(disabledWithoutDocker = true)
 final class JooqPostingRepositoryTest {
@@ -119,7 +121,7 @@ final class JooqPostingRepositoryTest {
 
     repository.saveEvent(event);
     repository.saveRequest(request);
-    repository.save(rule);
+    saveActive(repository, rule);
 
     final JooqPostingRepository reloaded = new JooqPostingRepository(newDsl(), objectMapper);
     final AccountingEvent persisted = reloaded.findEvent(event.eventId()).orElseThrow();
@@ -142,9 +144,9 @@ final class JooqPostingRepositoryTest {
     final UUID accountId = UUID.randomUUID();
     seedCompanyBranch(companyId, branchId);
     seedAccount(companyId, accountId);
-    final PostingRule global = rule(null, accountId);
+    final PostingRule global = globalRule();
     final PostingRule draft = draftRule(companyId, accountId);
-    repository.save(global);
+    saveActive(repository, global);
     repository.save(draft);
 
     assertThat(repository.findApplicable(global.eventType(), companyId, POSTING_DATE))
@@ -161,6 +163,128 @@ final class JooqPostingRepositoryTest {
     assertThat(repository.findRule(retired.postingRuleId())).contains(retired);
     assertThat(repository.findApplicable(global.eventType(), companyId, POSTING_DATE))
         .containsExactly(global);
+  }
+
+  @Test
+  void rejectsLineAppendAfterPostingRuleActivation() {
+    final UUID companyId = UUID.randomUUID();
+    final UUID branchId = UUID.randomUUID();
+    final UUID accountId = UUID.randomUUID();
+    seedCompanyBranch(companyId, branchId);
+    seedAccount(companyId, accountId);
+    final PostingRule draft = draftRule(companyId, accountId);
+    repository.save(draft);
+    repository.transition(draft.activate(NOW.plusSeconds(1), "reviewer"), PostingRule.Status.DRAFT);
+
+    assertThatThrownBy(
+            () ->
+                dsl.insertInto(DSL.table("finance_posting_rule_line"))
+                    .columns(
+                        DSL.field("posting_rule_line_id"),
+                        DSL.field("posting_rule_id"),
+                        DSL.field("line_number"),
+                        DSL.field("direction"),
+                        DSL.field("account_resolution_type"),
+                        DSL.field("fixed_account_id"),
+                        DSL.field("amount_expression"),
+                        DSL.field("description_template"),
+                        DSL.field("dimension_mappings"))
+                    .values(
+                        UUID.randomUUID(),
+                        draft.postingRuleId(),
+                        3,
+                        "DEBIT",
+                        "FIXED_ACCOUNT",
+                        accountId,
+                        "EVENT_AMOUNT",
+                        "late line",
+                        JSONB.valueOf("{}"))
+                    .execute())
+        .isInstanceOf(DataAccessException.class)
+        .hasMessageContaining("only be added to draft");
+  }
+
+  @Test
+  void rejectsCrossCompanyFixedAccountAtPersistenceBoundary() {
+    final UUID ruleCompanyId = UUID.randomUUID();
+    final UUID accountCompanyId = UUID.randomUUID();
+    seedCompanyBranch(ruleCompanyId, UUID.randomUUID());
+    seedCompanyBranch(accountCompanyId, UUID.randomUUID());
+    final UUID accountId = UUID.randomUUID();
+    seedAccount(accountCompanyId, accountId);
+
+    assertThatThrownBy(() -> repository.save(draftRule(ruleCompanyId, accountId)))
+        .isInstanceOf(DataAccessException.class)
+        .hasMessageContaining("outside rule company scope");
+  }
+
+  @Test
+  void rejectsPostingRequestResolvedRuleVersionMismatch() {
+    final UUID companyId = UUID.randomUUID();
+    final UUID branchId = UUID.randomUUID();
+    final UUID accountId = UUID.randomUUID();
+    seedCompanyBranch(companyId, branchId);
+    seedAccount(companyId, accountId);
+    final PostingRule draft = draftRule(companyId, accountId);
+    repository.save(draft);
+    final AccountingEvent event = event(companyId, branchId, "rule-version-guard");
+    repository.saveEvent(event);
+
+    assertThatThrownBy(
+            () ->
+                dsl.insertInto(DSL.table("finance_posting_request"))
+                    .columns(
+                        DSL.field("posting_request_id"),
+                        DSL.field("accounting_event_id"),
+                        DSL.field("status"),
+                        DSL.field("resolved_posting_rule_id"),
+                        DSL.field("resolved_posting_rule_version"),
+                        DSL.field("attempts"),
+                        DSL.field("created_at"),
+                        DSL.field("updated_at"),
+                        DSL.field("version"))
+                    .values(
+                        UUID.randomUUID(),
+                        event.eventId(),
+                        "RULE_RESOLVED",
+                        draft.postingRuleId(),
+                        draft.version() + 1,
+                        1,
+                        OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                        OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC),
+                        1)
+                    .execute())
+        .isInstanceOf(DataAccessException.class);
+  }
+
+  @Test
+  void rejectsAmbiguousOpenAccountingPeriodResolution() {
+    final UUID companyId = UUID.randomUUID();
+    seedCompanyBranch(companyId, UUID.randomUUID());
+    final JooqFinanceRepository finance = new JooqFinanceRepository(dsl);
+    for (int index = 1; index <= 2; index++) {
+      final UUID fiscalYearId = UUID.randomUUID();
+      finance.saveFiscalYear(
+          new FiscalYear(
+              fiscalYearId,
+              companyId,
+              "FY-AMBIGUOUS-" + index,
+              POSTING_DATE.minusMonths(1),
+              POSTING_DATE.plusMonths(1),
+              false));
+      finance.savePeriod(
+          new AccountingPeriod(
+              UUID.randomUUID(),
+              fiscalYearId,
+              "P-AMBIGUOUS-" + index,
+              POSTING_DATE.minusDays(1),
+              POSTING_DATE.plusDays(1),
+              false));
+    }
+
+    assertThatThrownBy(() -> finance.findOpenPostingPeriod(companyId, POSTING_DATE))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("multiple open accounting periods");
   }
 
   @Test
@@ -204,6 +328,46 @@ final class JooqPostingRepositoryTest {
   }
 
   @Test
+  void concurrentRetriesCreateOnlyOneJournal() throws Exception {
+    final UUID companyId = UUID.randomUUID();
+    final UUID branchId = UUID.randomUUID();
+    final UUID debitAccount = UUID.randomUUID();
+    final UUID creditAccount = UUID.randomUUID();
+    seedCompanyBranch(companyId, branchId);
+    seedCurrency();
+    final ServiceFixture fixture =
+        serviceFixture(companyId, branchId, debitAccount, creditAccount, true);
+    final PostingResult failed =
+        fixture.service().submit(event(companyId, branchId, "concurrent-retry"));
+    assertThat(failed.status()).isEqualTo(PostingRequest.Status.FAILED);
+
+    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final CountDownLatch start = new CountDownLatch(1);
+    try {
+      final List<Future<PostingResult>> retries =
+          List.of(
+              executor.submit(
+                  () -> {
+                    start.await();
+                    return fixture.service().retry(failed.postingRequestId());
+                  }),
+              executor.submit(
+                  () -> {
+                    start.await();
+                    return fixture.service().retry(failed.postingRequestId());
+                  }));
+      start.countDown();
+
+      assertThat(retries.get(0).get().status()).isEqualTo(PostingRequest.Status.POSTED);
+      assertThat(retries.get(1).get().status()).isEqualTo(PostingRequest.Status.POSTED);
+      assertThat(count("finance_journal_entry")).isEqualTo(1);
+      assertThat(count("finance_posting_request")).isEqualTo(1);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
   void durablyReloadsAndClaimsFailedRequestForRetry() {
     final AccountingEvent event = event(UUID.randomUUID(), "durable-retry");
     seedCompanyBranch(event.companyId(), event.branchId());
@@ -225,25 +389,16 @@ final class JooqPostingRepositoryTest {
 
   @Test
   void rejectsStaleUpdatesAndProtectsPostedRequests() {
-    final AccountingEvent event = event(UUID.randomUUID(), "request-lock");
-    seedCompanyBranch(event.companyId(), event.branchId());
-    final PostingRequest received = request(event.eventId(), PostingRequest.Status.RECEIVED, 0, 0);
-    repository.saveEvent(event);
-    repository.saveRequest(received);
-    final PostingRequest claimed =
-        repository.claimRequest(received.postingRequestId(), received.version()).orElseThrow();
-    final PostingRequest resolved =
-        transition(claimed, PostingRequest.Status.RULE_RESOLVED, claimed.version() + 1);
-    repository.updateRequest(resolved);
-    final PostingRequest journalCreated =
-        transition(
-            resolved, PostingRequest.Status.JOURNAL_CREATED, resolved.version() + 1);
-    repository.updateRequest(journalCreated);
+    final UUID companyId = UUID.randomUUID();
+    final UUID branchId = UUID.randomUUID();
+    seedCompanyBranch(companyId, branchId);
+    seedCurrency();
+    final ServiceFixture fixture =
+        serviceFixture(companyId, branchId, UUID.randomUUID(), UUID.randomUUID());
+    final PostingResult result =
+        fixture.service().submit(event(companyId, branchId, "request-lock"));
     final PostingRequest posted =
-        transition(
-            journalCreated, PostingRequest.Status.POSTED, journalCreated.version() + 1);
-
-    repository.updateRequest(posted);
+        fixture.repository().findRequest(result.postingRequestId()).orElseThrow();
 
     assertThatThrownBy(() -> repository.updateRequest(posted))
         .isInstanceOf(PostingException.class);
@@ -820,7 +975,7 @@ final class JooqPostingRepositoryTest {
     final JooqPostingRepository postingRepository =
         new JooqPostingRepository(transactionalDsl, objectMapper);
     if (seedPostingRule) {
-      postingRepository.save(rule(companyId, debitAccount, creditAccount));
+      saveActive(postingRepository, rule(companyId, debitAccount, creditAccount));
     }
     final PlatformService platform =
         new PlatformService(
@@ -862,9 +1017,18 @@ final class JooqPostingRepositoryTest {
         new PostingService(
             postingRepository,
             postingRepository,
-            new PostingInfrastructureAdapters.CompanyAdapter(transactionalDsl),
-            new PostingInfrastructureAdapters.BranchAdapter(transactionalDsl),
-            new PostingInfrastructureAdapters.CurrencyAdapter(transactionalDsl),
+            new PostingInfrastructureAdapters.CompanyAdapter(
+                enterpriseReferences(transactionalDsl)),
+            new PostingInfrastructureAdapters.BranchAdapter(
+                enterpriseReferences(transactionalDsl)),
+            new PostingInfrastructureAdapters.CurrencyAdapter(
+                code ->
+                    transactionalDsl.fetchExists(
+                        DSL.table("master_data_record"),
+                        DSL.field("aggregate_type", String.class)
+                            .eq("CURRENCY")
+                            .and(DSL.field("code", String.class).eq(code))
+                            .and(DSL.field("active", Boolean.class).eq(true)))),
             new PostingInfrastructureAdapters.RateAdapter(),
             new PostingInfrastructureAdapters.PeriodAdapter(financeRepository),
             new PostingInfrastructureAdapters.DimensionsAdapter(financeRepository),
@@ -885,6 +1049,29 @@ final class JooqPostingRepositoryTest {
 
       @Override
       public void requireGlobal(final String actor, final String capability) {}
+    };
+  }
+
+  private static EnterpriseReferencePort enterpriseReferences(final DSLContext context) {
+    return new EnterpriseReferencePort() {
+      @Override
+      public boolean isActiveCompany(final UUID companyId) {
+        return context.fetchExists(
+            DSL.table("company"),
+            DSL.field("id", UUID.class)
+                .eq(companyId)
+                .and(DSL.field("status", String.class).eq("ACTIVE")));
+      }
+
+      @Override
+      public boolean isActiveBranch(final UUID companyId, final UUID branchId) {
+        return context.fetchExists(
+            DSL.table("branch"),
+            DSL.field("id", UUID.class)
+                .eq(branchId)
+                .and(DSL.field("company_id", UUID.class).eq(companyId))
+                .and(DSL.field("status", String.class).eq("ACTIVE")));
+      }
     };
   }
 
@@ -1050,7 +1237,7 @@ final class JooqPostingRepositoryTest {
             DSL.field("version"))
         .values(
             enterpriseId,
-            "ENT",
+            "ENT-" + companyId.toString().substring(0, 8),
             "Enterprise",
             JSONB.valueOf("{}"),
             "ACTIVE",
@@ -1270,6 +1457,29 @@ final class JooqPostingRepositoryTest {
     return rule(companyId, accountId, accountId);
   }
 
+  private static void saveActive(
+      final JooqPostingRepository target, final PostingRule activeRule) {
+    final PostingRule draft =
+        new PostingRule(
+            activeRule.postingRuleId(),
+            activeRule.code(),
+            activeRule.name(),
+            activeRule.eventType(),
+            activeRule.companyId(),
+            activeRule.effectiveFrom(),
+            activeRule.effectiveTo(),
+            activeRule.priority(),
+            PostingRule.Status.DRAFT,
+            activeRule.version(),
+            activeRule.lines(),
+            activeRule.createdAt(),
+            activeRule.createdBy(),
+            null,
+            null);
+    target.save(draft);
+    target.transition(activeRule, PostingRule.Status.DRAFT);
+  }
+
   private static PostingRule rule(
       final UUID companyId, final UUID debitAccount, final UUID creditAccount) {
     return new PostingRule(
@@ -1286,6 +1496,27 @@ final class JooqPostingRepositoryTest {
         List.of(
             line(1, PostingRuleLine.Direction.DEBIT, debitAccount),
             line(2, PostingRuleLine.Direction.CREDIT, creditAccount)),
+        NOW,
+        "architect",
+        NOW,
+        "architect");
+  }
+
+  private static PostingRule globalRule() {
+    return new PostingRule(
+        UUID.randomUUID(),
+        "GLOBAL-SALES-POSTING",
+        "Global sales posting",
+        "SALES_ORDER_APPROVED",
+        null,
+        LocalDate.parse("2026-01-01"),
+        null,
+        1,
+        PostingRule.Status.ACTIVE,
+        1,
+        List.of(
+            attributeLine(1, PostingRuleLine.Direction.DEBIT, "debitAccountId"),
+            attributeLine(2, PostingRuleLine.Direction.CREDIT, "creditAccountId")),
         NOW,
         "architect",
         NOW,
@@ -1322,6 +1553,21 @@ final class JooqPostingRepositoryTest {
         PostingRuleLine.AccountResolutionType.FIXED_ACCOUNT,
         accountId,
         null,
+        PostingRuleLine.AmountExpression.EVENT_AMOUNT,
+        null,
+        "Posting line",
+        Map.of());
+  }
+
+  private static PostingRuleLine attributeLine(
+      final int number, final PostingRuleLine.Direction direction, final String attributeKey) {
+    return new PostingRuleLine(
+        UUID.randomUUID(),
+        number,
+        direction,
+        PostingRuleLine.AccountResolutionType.EVENT_ATTRIBUTE_ACCOUNT,
+        null,
+        attributeKey,
         PostingRuleLine.AmountExpression.EVENT_AMOUNT,
         null,
         "Posting line",

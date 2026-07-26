@@ -124,6 +124,8 @@ public final class JooqPostingRepository
     final int claimed =
         dsl.update(DSL.table("finance_posting_request"))
             .set(DSL.field("status", String.class), PostingRequest.Status.VALIDATING.name())
+            .setNull(DSL.field("failure_code", String.class))
+            .setNull(DSL.field("failure_message", String.class))
             .set(DSL.field("attempts", Integer.class), DSL.field("attempts", Integer.class).plus(1))
             .set(DSL.field("version", Integer.class), expectedVersion + 1)
             .set(DSL.field("updated_at", OffsetDateTime.class), OffsetDateTime.now(ZoneOffset.UTC))

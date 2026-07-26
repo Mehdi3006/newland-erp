@@ -1,42 +1,34 @@
 # Next Codex Task
 
-## Recommended Task: Await Explicit Approval for the Next Phase
+## Recommended Task: Complete the P3.8 Release Gate
 
-P3.7 Finance Foundation is approved and merged. P3.8 Financial Posting Infrastructure is the only
-approved active implementation scope. No subsequent phase may begin until it receives explicit
-architectural approval. Accounts Payable, Accounts Receivable, payments, banking, tax filing, fixed
-assets, budgeting, payroll, consolidation, automatic posting, and reporting remain out of scope.
+P3.7 Finance Foundation is approved and merged. P3.8 Financial Posting Infrastructure is implemented
+on PR #20 and must pass its release gate before merge. No subsequent phase may begin until it
+receives explicit architectural approval. Accounts Payable, Accounts Receivable, payments, banking,
+tax filing, fixed assets, budgeting, payroll, consolidation, source-module automatic posting, and
+reporting remain out of scope.
 
-The next task is to await an explicit phase approval; do not start implementation.
+The next task is to complete the P3.8 release gate and await explicit merge authority.
 
-## Completed P3.6 Scope
+## Completed P3.8 Scope
 
-Review and validate implementation for:
+- Immutable accounting-event acceptance and durable idempotent posting requests.
+- Versioned posting-rule lifecycle, precedence, conflict detection, deterministic evaluation, and
+  company/system authorization.
+- Real Finance journal creation and posting through the existing Finance application service.
+- Durable concurrency/retry handling and transactional audit/outbox persistence.
+- Explicit integration contracts for Enterprise Structure, Master Data, Identity, and Platform.
 
-- Customers, contacts, addresses, statuses, credit profiles, and customer product/SKU references.
-- Sales quotations, lines, approval, controlled revision, commercial-term preservation, and expiry
-  rules.
-- Sales orders, approvals, amendments, cancellations, requested delivery schedule, partial
-  reservation and delivery tracking, and remaining-quantity consistency.
-- Master Data, Shared Product Catalog, Enterprise Structure, Identity, Platform audit/events,
-  attachments, number series, and explicit Inventory availability/reservation/delivery-request port
-  reuse.
+## P3.8 Release Boundaries
 
-## P3.6 Release Boundaries
+- Do not introduce source-module automatic posting.
+- Do not implement Accounts Payable, Accounts Receivable, payments, banking, tax filing, fixed
+  assets, budgeting, payroll, consolidation, statements, or advanced reporting.
+- Keep Finance posting behind domain, application, API, and infrastructure layers.
+- Do not begin another phase without explicit architectural approval.
 
-- Do not implement Accounts Receivable, accounting journal entries, customer payments, credit
-  collection, pricing engine, discount engine, direct inventory balance mutation, delivery
-  execution, stock issue posting, invoicing, CRM campaigns, Manufacturing, HR, forecasting, or
-  automated replenishment.
-- Keep Sales behind domain, application, API, and infrastructure layers.
-- Keep persistence limited to approved Sales tables.
-- Do not begin Accounts Receivable, Accounting, Pricing, CRM, or any next phase without explicit
-  architectural approval.
+## P3.8 Completion Record
 
-## P3.6 Completion Record
-
-- Sales domain model, repository port, repository adapter, service, REST API, DTOs, validation,
-  Flyway migration, unit tests, integration tests, and architecture tests passed review.
-- API, persistence, migrations, architecture checks, security checks, and tests passed quality
-  gates.
-- No operational business modules beyond the approved Sales Foundation were implemented.
+- Financial Posting domain model, ports, durable jOOQ adapter, services, REST API, DTOs, validation,
+  Flyway migrations, unit tests, PostgreSQL integration tests, and architecture tests are present.
+- No automatic Procurement, Sales, or Inventory posting was introduced.

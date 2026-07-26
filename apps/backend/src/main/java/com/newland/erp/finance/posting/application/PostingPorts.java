@@ -100,10 +100,6 @@ public final class PostingPorts {
 
   public record JournalReference(UUID journalEntryId, String journalNumber) {}
 
-  public interface NumberSeriesPort {
-    String next(String series);
-  }
-
   public interface AuditPort {
     void record(String actor, String eventType, UUID aggregateId);
   }

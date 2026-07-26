@@ -192,7 +192,7 @@ public final class JooqFinanceRepository implements FinanceRepository {
   @Override
   public Optional<FinanceRepository.PostingPeriod> findOpenPostingPeriod(
       final UUID companyId, final LocalDate postingDate) {
-    return dsl.select(
+    final List<FinanceRepository.PostingPeriod> matches = dsl.select(
             DSL.field("fy.id", UUID.class), DSL.field("p.id", UUID.class))
         .from(DSL.table("finance_fiscal_year").as("fy"))
         .join(DSL.table("finance_accounting_period").as("p"))
@@ -210,8 +210,14 @@ public final class JooqFinanceRepository implements FinanceRepository {
                 .between(
                     DSL.field("p.starts_on", LocalDate.class),
                     DSL.field("p.ends_on", LocalDate.class)))
-        .limit(1)
-        .fetchOptional(r -> new FinanceRepository.PostingPeriod(r.value1(), r.value2()));
+        .orderBy(DSL.field("fy.id"), DSL.field("p.id"))
+        .limit(2)
+        .fetch(r -> new FinanceRepository.PostingPeriod(r.value1(), r.value2()));
+    if (matches.size() > 1) {
+      throw new FinanceException(
+          "Posting date resolves to multiple open accounting periods.");
+    }
+    return matches.stream().findFirst();
   }
 
   @Override

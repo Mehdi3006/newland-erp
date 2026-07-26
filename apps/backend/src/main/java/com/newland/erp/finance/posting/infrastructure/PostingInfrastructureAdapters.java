@@ -8,16 +8,15 @@ import com.newland.erp.finance.domain.JournalEntry;
 import com.newland.erp.finance.posting.domain.AccountingEvent;
 import com.newland.erp.finance.posting.domain.PostingException;
 import com.newland.erp.finance.posting.domain.PostingRule;
-import com.newland.erp.identity.application.IdentityService;
-import com.newland.erp.platform.application.PlatformCommands;
-import com.newland.erp.platform.application.PlatformService;
+import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;
+import com.newland.erp.identity.application.integration.IdentityAuthorizationPort;
+import com.newland.erp.masterdata.application.integration.MasterDataReferencePort;
+import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jooq.DSLContext;
-import org.jooq.impl.DSL;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -26,21 +25,15 @@ import org.springframework.stereotype.Component;
 public final class PostingInfrastructureAdapters {
   @Component
   public static final class CompanyAdapter implements PostingPorts.CompanyValidationPort {
-    private final DSLContext dsl;
+    private final EnterpriseReferencePort enterprise;
 
-    public CompanyAdapter(final DSLContext dslContext) {
-      dsl = dslContext;
+    public CompanyAdapter(final EnterpriseReferencePort enterpriseReferencePort) {
+      enterprise = enterpriseReferencePort;
     }
 
     public void requireCompany(final UUID id) {
       require(id, "company");
-      final boolean active =
-          dsl.fetchExists(
-              DSL.table("company"),
-              DSL.field("id", UUID.class)
-                  .eq(id)
-                  .and(DSL.field("status", String.class).eq("ACTIVE")));
-      if (!active) {
+      if (!enterprise.isActiveCompany(id)) {
         throw new PostingException("Posting company is missing or inactive.");
       }
     }
@@ -48,23 +41,16 @@ public final class PostingInfrastructureAdapters {
 
   @Component
   public static final class BranchAdapter implements PostingPorts.BranchValidationPort {
-    private final DSLContext dsl;
+    private final EnterpriseReferencePort enterprise;
 
-    public BranchAdapter(final DSLContext dslContext) {
-      dsl = dslContext;
+    public BranchAdapter(final EnterpriseReferencePort enterpriseReferencePort) {
+      enterprise = enterpriseReferencePort;
     }
 
     public void requireBranch(final UUID company, final UUID branch) {
       require(company, "company");
       require(branch, "branch");
-      final boolean active =
-          dsl.fetchExists(
-              DSL.table("branch"),
-              DSL.field("id", UUID.class)
-                  .eq(branch)
-                  .and(DSL.field("company_id", UUID.class).eq(company))
-                  .and(DSL.field("status", String.class).eq("ACTIVE")));
-      if (!active) {
+      if (!enterprise.isActiveBranch(company, branch)) {
         throw new PostingException("Posting branch is missing, inactive, or outside company scope.");
       }
     }
@@ -72,24 +58,17 @@ public final class PostingInfrastructureAdapters {
 
   @Component
   public static final class CurrencyAdapter implements PostingPorts.CurrencyValidationPort {
-    private final DSLContext dsl;
+    private final MasterDataReferencePort masterData;
 
-    public CurrencyAdapter(final DSLContext dslContext) {
-      dsl = dslContext;
+    public CurrencyAdapter(final MasterDataReferencePort masterDataReferencePort) {
+      masterData = masterDataReferencePort;
     }
 
     public void requireCurrency(final String code) {
       if (code == null || code.isBlank()) {
         throw new PostingException("Currency is required.");
       }
-      final boolean active =
-          dsl.fetchExists(
-              DSL.table("master_data_record"),
-              DSL.field("aggregate_type", String.class)
-                  .eq("CURRENCY")
-                  .and(DSL.field("code", String.class).eq(code.trim().toUpperCase()))
-                  .and(DSL.field("active", Boolean.class).eq(true)));
-      if (!active) {
+      if (!masterData.isActiveCurrency(code.trim().toUpperCase())) {
         throw new PostingException("Posting currency is missing or inactive.");
       }
     }
@@ -261,31 +240,28 @@ public final class PostingInfrastructureAdapters {
   @Component
   public static final class PlatformAdapter
       implements PostingPorts.AuditPort, PostingPorts.TransactionalOutboxPort {
-    private final PlatformService platform;
+    private final PlatformAuditOutboxPort platform;
 
-    public PlatformAdapter(final PlatformService platformService) {
-      platform = platformService;
+    public PlatformAdapter(final PlatformAuditOutboxPort platformPort) {
+      platform = platformPort;
     }
 
     public void record(final String actor, final String event, final UUID id) {
-      platform.recordAudit(
-          new PlatformCommands.RecordAudit(
-              actor, event, "FinancePosting", id, Map.of()));
+      platform.recordAudit(actor, event, "FinancePosting", id, Map.of());
     }
 
     public void publish(final String event, final UUID id) {
-      platform.publishEvent(
-          new PlatformCommands.PublishEvent("finance-posting", event, id, Map.of()));
+      platform.publishEvent("finance-posting", event, id, Map.of());
     }
   }
 
   @Component
   public static final class SecurityAdapter
       implements PostingPorts.CurrentUserPort, PostingPorts.AuthorizationPort {
-    private final IdentityService identity;
+    private final IdentityAuthorizationPort identity;
 
-    public SecurityAdapter(final IdentityService identityService) {
-      identity = identityService;
+    public SecurityAdapter(final IdentityAuthorizationPort identityAuthorizationPort) {
+      identity = identityAuthorizationPort;
     }
 
     public String currentUser() {
@@ -297,15 +273,15 @@ public final class PostingInfrastructureAdapters {
     }
 
     public void require(final String actor, final String capability, final UUID companyId) {
-      final var decision =
-          identity.decideCompany(authenticatedUser(actor), capability, companyId);
-      if (!decision.granted()) {
+      if (!identity.isCompanyCapabilityGranted(
+          authenticatedUser(actor), capability, companyId)) {
         throw new AccessDeniedException("Permission denied for company scope.");
       }
     }
 
     public void requireGlobal(final String actor, final String capability) {
-      if (!identity.hasEnterpriseCapability(authenticatedUser(actor), capability)) {
+      if (!identity.isSystemEnterpriseCapabilityGranted(
+          authenticatedUser(actor), capability)) {
         throw new AccessDeniedException("Permission denied for enterprise scope.");
       }
     }

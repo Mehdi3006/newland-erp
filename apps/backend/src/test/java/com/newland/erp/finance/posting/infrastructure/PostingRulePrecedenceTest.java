@@ -43,8 +43,8 @@ final class PostingRulePrecedenceTest {
         PostingRule.Status.ACTIVE,
         1,
         List.of(
-            line(1, PostingRuleLine.Direction.DEBIT),
-            line(2, PostingRuleLine.Direction.CREDIT)),
+            line(1, PostingRuleLine.Direction.DEBIT, companyId),
+            line(2, PostingRuleLine.Direction.CREDIT, companyId)),
         Instant.parse("2026-01-01T00:00:00Z"),
         "actor",
         null,
@@ -52,14 +52,18 @@ final class PostingRulePrecedenceTest {
   }
 
   private PostingRuleLine line(
-      final int lineNumber, final PostingRuleLine.Direction direction) {
+      final int lineNumber,
+      final PostingRuleLine.Direction direction,
+      final UUID companyId) {
     return new PostingRuleLine(
         UUID.randomUUID(),
         lineNumber,
         direction,
-        PostingRuleLine.AccountResolutionType.FIXED_ACCOUNT,
-        UUID.randomUUID(),
-        null,
+        companyId == null
+            ? PostingRuleLine.AccountResolutionType.EVENT_ATTRIBUTE_ACCOUNT
+            : PostingRuleLine.AccountResolutionType.FIXED_ACCOUNT,
+        companyId == null ? null : UUID.randomUUID(),
+        companyId == null ? "accountId" : null,
         PostingRuleLine.AmountExpression.CONSTANT,
         BigDecimal.ONE,
         "line",

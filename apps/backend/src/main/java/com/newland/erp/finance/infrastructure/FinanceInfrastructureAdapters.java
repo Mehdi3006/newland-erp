@@ -1,8 +1,7 @@
 package com.newland.erp.finance.infrastructure;
 
 import com.newland.erp.finance.application.FinancePorts;
-import com.newland.erp.platform.application.PlatformCommands;
-import com.newland.erp.platform.application.PlatformService;
+import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
 import java.util.Map;
 import java.util.UUID;
 import org.jooq.DSLContext;
@@ -68,30 +67,25 @@ public final class FinanceInfrastructureAdapters {
   @Component
   public static final class PlatformAdapter
       implements FinancePorts.AuditPort, FinancePorts.OutboxPort, FinancePorts.AttachmentPort {
-    private final PlatformService platform;
+    private final PlatformAuditOutboxPort platform;
 
-    public PlatformAdapter(final PlatformService platformService) {
-      platform = platformService;
+    public PlatformAdapter(final PlatformAuditOutboxPort platformPort) {
+      platform = platformPort;
     }
 
     public void record(final String actor, final String action, final UUID id) {
-      platform.recordAudit(
-          new PlatformCommands.RecordAudit(
-              actor, action, "FinanceJournal", id, Map.of()));
+      platform.recordAudit(actor, action, "FinanceJournal", id, Map.of());
     }
 
     public void publish(final String eventType, final UUID id) {
-      platform.publishEvent(
-          new PlatformCommands.PublishEvent("finance", eventType, id, Map.of()));
+      platform.publishEvent("finance", eventType, id, Map.of());
     }
 
     public void attach(final UUID aggregateId, final UUID attachmentId) {
       if (attachmentId == null) {
         throw new IllegalArgumentException("Attachment is required.");
       }
-      platform.attachFile(
-          new PlatformCommands.AttachFile(
-              "finance", "JournalEntry", aggregateId, attachmentId));
+      platform.attachFile("finance", "JournalEntry", aggregateId, attachmentId);
     }
   }
 

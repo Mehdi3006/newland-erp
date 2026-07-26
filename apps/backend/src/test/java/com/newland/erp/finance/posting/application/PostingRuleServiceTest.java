@@ -97,7 +97,7 @@ final class PostingRuleServiceTest {
             LocalDate.parse("2027-01-01"),
             null,
             1,
-            lines()));
+            globalLines()));
 
     assertThatThrownBy(
             () ->
@@ -108,7 +108,7 @@ final class PostingRuleServiceTest {
                         LocalDate.parse("2028-01-01"),
                         null,
                         1,
-                        lines())))
+                        globalLines())))
         .isInstanceOf(PostingException.class)
         .hasMessageContaining("latest");
     assertThat(authorization.globalCapabilities)
@@ -138,13 +138,19 @@ final class PostingRuleServiceTest {
         LocalDate.parse("2026-01-01"),
         LocalDate.parse("2026-12-31"),
         priority,
-        lines());
+        companyId == null ? globalLines() : lines());
   }
 
   private List<PostingRuleLine> lines() {
     return List.of(
         line(1, PostingRuleLine.Direction.DEBIT),
         line(2, PostingRuleLine.Direction.CREDIT));
+  }
+
+  private List<PostingRuleLine> globalLines() {
+    return List.of(
+        attributeLine(1, PostingRuleLine.Direction.DEBIT, "debitAccountId"),
+        attributeLine(2, PostingRuleLine.Direction.CREDIT, "creditAccountId"));
   }
 
   private PostingRuleLine line(
@@ -156,6 +162,23 @@ final class PostingRuleServiceTest {
         PostingRuleLine.AccountResolutionType.FIXED_ACCOUNT,
         UUID.randomUUID(),
         null,
+        PostingRuleLine.AmountExpression.CONSTANT,
+        BigDecimal.ONE,
+        "line",
+        java.util.Map.of());
+  }
+
+  private PostingRuleLine attributeLine(
+      final int lineNumber,
+      final PostingRuleLine.Direction direction,
+      final String attributeKey) {
+    return new PostingRuleLine(
+        UUID.randomUUID(),
+        lineNumber,
+        direction,
+        PostingRuleLine.AccountResolutionType.EVENT_ATTRIBUTE_ACCOUNT,
+        null,
+        attributeKey,
         PostingRuleLine.AmountExpression.CONSTANT,
         BigDecimal.ONE,
         "line",

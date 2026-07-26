@@ -98,6 +98,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V9__finance_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V10__finance_posting_infrastructure.sql',
   'apps/backend/src/main/resources/db/migration/V11__finance_posting_integrity.sql',
+  'apps/backend/src/main/resources/db/migration/V12__finance_posting_release_guards.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -349,6 +350,9 @@ function boundedContextLayer(normalizedPath) {
 export function classifyJavaBoundaryViolation(repositoryPath, source) {
   const normalizedPath = repositoryPath.replaceAll('\\', '/');
   const isTestSource = normalizedPath.includes('/src/test/');
+  const approvedCrossContextIntegrationTest =
+    normalizedPath ===
+    'apps/backend/src/test/java/com/newland/erp/finance/posting/infrastructure/JooqPostingRepositoryTest.java';
   if (!normalizedPath.endsWith('.java')) {
     return undefined;
   }
@@ -359,19 +363,11 @@ export function classifyJavaBoundaryViolation(repositoryPath, source) {
       (line) =>
         line.startsWith('import com.newland.erp.') &&
         !line.startsWith(`import com.newland.erp.${boundedContextName(normalizedPath)}.`) &&
-        !(
-          (normalizedPath.includes('/finance/posting/infrastructure/') &&
-            (line.startsWith('import com.newland.erp.finance.application.') ||
-              line.startsWith('import com.newland.erp.finance.domain.') ||
-              line.startsWith('import com.newland.erp.identity.application.') ||
-              line.startsWith('import com.newland.erp.platform.application.'))) ||
-          (normalizedPath.includes('/finance/infrastructure/') &&
-            line.startsWith('import com.newland.erp.platform.application.'))
-        ) &&
+        !line.includes('.application.integration.') &&
         !line.startsWith('import com.newland.erp.NewlandErpApplication;'),
     );
 
-  if (importsAnotherBoundedContext && !isTestSource) {
+  if (importsAnotherBoundedContext && !approvedCrossContextIntegrationTest) {
     return `backend bounded context must not depend on another bounded context: ${normalizedPath}`;
   }
 
@@ -443,7 +439,7 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedFinanceTables.has(tableName) &&
       !approvedFinancePostingTables.has(tableName)
     ) {
-      return `ERP migrations may only define approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5/P3.6 tables: ${normalizedPath} (${tableName})`;
+      return `ERP migrations may only define tables approved through P3.8: ${normalizedPath} (${tableName})`;
     }
   }
 

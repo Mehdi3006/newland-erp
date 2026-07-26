@@ -50,6 +50,15 @@ public record PostingRule(
         || lines.stream().noneMatch(line -> line.direction() == PostingRuleLine.Direction.CREDIT)) {
       throw new PostingException("Posting rules require debit and credit lines.");
     }
+    if (companyId == null
+        && lines.stream()
+            .anyMatch(
+                line ->
+                    line.accountResolutionType()
+                        == PostingRuleLine.AccountResolutionType.FIXED_ACCOUNT)) {
+      throw new PostingException(
+          "Global posting rules must resolve accounts from event attributes.");
+    }
   }
 
   public PostingRule activate(final Instant changedAt, final String actor) {

@@ -75,7 +75,7 @@ public final class PostingService implements FinancialPostingPort {
         || request.status() == PostingRequest.Status.POSTED) {
       return resultFor(request);
     }
-    return execute(request, accepted.event());
+    return execute(request, accepted.event(), false);
   }
 
   @Override
@@ -113,10 +113,11 @@ public final class PostingService implements FinancialPostingPort {
             .findEvent(request.accountingEventId())
             .orElseThrow(() -> new PostingException("Accounting event not found."));
     authorization.require(currentUsers.currentUser(), "finance.posting.retry", event.companyId());
-    return execute(request, event);
+    return execute(request, event, true);
   }
 
-  private PostingResult execute(final PostingRequest request, final AccountingEvent event) {
+  private PostingResult execute(
+      final PostingRequest request, final AccountingEvent event, final boolean retry) {
     try {
       return transactions.execute(
           status -> {
@@ -133,6 +134,9 @@ public final class PostingService implements FinancialPostingPort {
                 events
                     .claimRequest(current.postingRequestId(), current.version())
                     .orElseThrow(() -> new PostingException("Posting request claim failed."));
+            if (retry) {
+              audit.record(event.submittedBy(), "POSTING_RETRIED", claimed.postingRequestId());
+            }
             final PostingRule rule = resolve(event);
             final PostingRequest resolved =
                 transition(
@@ -250,7 +254,8 @@ public final class PostingService implements FinancialPostingPort {
             null,
             failureCode(exception),
             safeMessage(exception));
-    audit.record(currentUsers.currentUser(), "POSTING_REJECTED", rejected.postingRequestId());
+    audit.record(
+        currentUsers.currentUser(), "POSTING_VALIDATION_FAILED", rejected.postingRequestId());
     outbox.publish("FinancePostingRejected", rejected.postingRequestId());
     return rejected;
   }
@@ -282,8 +287,13 @@ public final class PostingService implements FinancialPostingPort {
                   current.journalEntryId(),
                   failureCode(exception),
                   safeMessage(exception));
-          audit.record(event.submittedBy(), "POSTING_" + failureStatus.name(), postingRequestId);
-          outbox.publish("FinancePosting" + failureStatus.name(), postingRequestId);
+          final boolean rejected = failureStatus == PostingRequest.Status.REJECTED;
+          audit.record(
+              event.submittedBy(),
+              rejected ? "POSTING_VALIDATION_FAILED" : "POSTING_FAILED",
+              postingRequestId);
+          outbox.publish(
+              rejected ? "FinancePostingRejected" : "FinancePostingFailed", postingRequestId);
           return resultFor(failed);
         });
   }

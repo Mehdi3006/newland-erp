@@ -5,6 +5,7 @@ import com.newland.erp.masterdata.domain.MasterDataNotFoundException;
 import com.newland.erp.masterdata.domain.MasterDataRecord;
 import com.newland.erp.masterdata.domain.MasterDataType;
 import com.newland.erp.masterdata.domain.MasterDataVersionConflictException;
+import com.newland.erp.masterdata.application.integration.MasterDataReferencePort;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public final class MasterDataService {
+public final class MasterDataService implements MasterDataReferencePort {
     private final MasterDataRepository repository;
     private final Clock clock;
 
@@ -68,6 +69,17 @@ public final class MasterDataService {
     @Transactional(readOnly = true)
     public List<MasterDataRecord> list(final MasterDataType type) {
         return repository.listByType(type);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isActiveCurrency(final String currencyCode) {
+        if (currencyCode == null || currencyCode.isBlank()) {
+            return false;
+        }
+        return repository.findByTypeAndCode(MasterDataType.CURRENCY, currencyCode)
+                .map(MasterDataRecord::active)
+                .orElse(false);
     }
 
     private MasterDataRecord getVersioned(final UUID id, final long expectedVersion) {
