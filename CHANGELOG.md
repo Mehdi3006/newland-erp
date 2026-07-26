@@ -9,6 +9,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.12.1 General Ledger Core hardening with three-state accounting periods, PostgreSQL
+  double-entry and immutability guards, atomic journal idempotency, company-scoped authorization,
+  durable posting snapshots, published Finance contract adapters, reversal safety, and
+  PostgreSQL/Testcontainers concurrency coverage. No AP, AR, Treasury, UI, reporting, or financial
+  statements are included.
+
 - Phase P3.12.0 Finance Foundation Contracts for validated accounting-period, journal,
   financial-document numbering, currency/exchange-rate, and published posting boundaries. No AP or
   AR workflow or persistence is included.

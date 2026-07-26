@@ -5,6 +5,7 @@ import com.newland.erp.finance.domain.AccountingPeriod;
 import com.newland.erp.finance.domain.CostCenter;
 import com.newland.erp.finance.domain.FiscalYear;
 import com.newland.erp.finance.domain.JournalEntry;
+import com.newland.erp.finance.domain.JournalPostingSnapshot;
 import com.newland.erp.finance.domain.JournalReversal;
 import com.newland.erp.finance.domain.ProfitCenter;
 import java.util.List;
@@ -32,17 +33,30 @@ public interface FinanceRepository {
 
   AccountingPeriod savePeriod(AccountingPeriod period);
 
+  AccountingPeriod updatePeriod(AccountingPeriod period, AccountingPeriod.State expectedState);
+
   Optional<FiscalYear> findFiscalYear(UUID id);
 
   Optional<AccountingPeriod> findPeriod(UUID id);
 
   Optional<PostingPeriod> findOpenPostingPeriod(UUID companyId, java.time.LocalDate postingDate);
 
+  Optional<PostingPeriod> findPostingPeriod(
+      UUID companyId,
+      java.time.LocalDate postingDate,
+      com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose purpose);
+
   JournalEntry saveJournal(JournalEntry journal);
+
+  JournalEntry insertJournal(JournalEntry journal);
 
   Optional<JournalEntry> findJournal(UUID id);
 
   Optional<JournalEntry> findJournalByIdempotencyKey(String idempotencyKey);
+
+  JournalPostingSnapshot savePostingSnapshot(JournalPostingSnapshot snapshot);
+
+  Optional<JournalPostingSnapshot> findPostingSnapshot(UUID journalEntryId);
 
   boolean reversalExists(UUID journalId);
 

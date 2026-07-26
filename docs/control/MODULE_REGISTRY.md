@@ -18,8 +18,8 @@ This registry tracks business architecture readiness. It is not a code module re
 | Procurement-Finance Integration | Defined                  | Implemented           | P3.9.1 approved and merged.                                            |
 | CRM                             | Defined                  | Implemented           | P3.10 approved and merged; Sales remains customer master owner.        |
 | Service and Warranty            | Defined                  | Implemented           | P3.11 approved and merged.                                             |
-| Finance Foundation Contracts    | Defined                  | In review             | P3.12.0 contracts only; no AP/AR workflows.                            |
-| General Ledger                  | Defined                  | Not started           | P3.12.1 requires fiscal, tax, currency, and COA decisions.             |
+| Finance Foundation Contracts    | Defined                  | Implemented           | P3.12.0 approved and merged; no AP/AR workflows.                       |
+| General Ledger                  | Defined                  | In review             | P3.12.1 core only; no AP/AR/Treasury/reporting.                        |
 | Accounts Receivable             | Defined                  | Not started           | Requires credit policy.                                                |
 | Accounts Payable                | Defined                  | Not started           | Requires invoice matching policy.                                      |
 | Treasury                        | Defined                  | Not started           | Requires bank/payment/check decisions.                                 |

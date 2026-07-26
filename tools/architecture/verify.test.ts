@@ -43,6 +43,7 @@ describe('Repository architecture verification', () => {
     'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
     'apps/backend/src/main/java/com/newland/erp/sales/domain/SalesOrder.java',
     'apps/backend/src/main/resources/db/migration/V8__sales_foundation.sql',
+    'apps/backend/src/main/resources/db/migration/V20__general_ledger_core.sql',
     'apps/web/enterprise-structure/index.html',
   ])('allows approved P3.1 path %s', (path) => {
     expect(classifyRepositoryPathViolation(path)).toBeUndefined();

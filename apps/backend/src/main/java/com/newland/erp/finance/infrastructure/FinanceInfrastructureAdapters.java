@@ -1,37 +1,77 @@
 package com.newland.erp.finance.infrastructure;
 
 import com.newland.erp.finance.application.FinancePorts;
+import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;
+import com.newland.erp.identity.application.integration.IdentityAuthorizationPort;
 import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
 import java.util.Map;
 import java.util.UUID;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 public final class FinanceInfrastructureAdapters {
   @Component
   public static final class EnterpriseAdapter implements FinancePorts.EnterprisePort {
+    private final EnterpriseReferencePort enterprise;
+
+    public EnterpriseAdapter(final EnterpriseReferencePort enterpriseReferencePort) {
+      enterprise = enterpriseReferencePort;
+    }
+
     public void requireCompanyBranch(final UUID company, final UUID branch) {
       if (company == null || branch == null) {
         throw new IllegalArgumentException("Company and branch scope are required.");
+      }
+      if (!enterprise.isActiveCompany(company) || !enterprise.isActiveBranch(company, branch)) {
+        throw new IllegalArgumentException(
+            "Company or branch is inactive or outside the requested scope.");
       }
     }
   }
 
   @Component
   public static final class MasterDataAdapter implements FinancePorts.MasterDataPort {
+    private final DSLContext dsl;
+
+    public MasterDataAdapter(final DSLContext dslContext) {
+      dsl = dslContext;
+    }
+
     public void requireCurrency(final UUID currency) {
       if (currency == null) {
         throw new IllegalArgumentException("Currency is required.");
+      }
+      final boolean active =
+          dsl.fetchExists(
+              DSL.table("master_data_record"),
+              DSL.field("id", UUID.class)
+                  .eq(currency)
+                  .and(DSL.field("aggregate_type", String.class).eq("CURRENCY"))
+                  .and(DSL.field("active", Boolean.class).eq(true)));
+      if (!active) {
+        throw new IllegalArgumentException("Currency is missing or inactive.");
       }
     }
   }
 
   @Component
   public static final class AuthorizationAdapter implements FinancePorts.AuthorizationPort {
+    private final IdentityAuthorizationPort identity;
+
+    public AuthorizationAdapter(final IdentityAuthorizationPort identityAuthorizationPort) {
+      identity = identityAuthorizationPort;
+    }
+
     public void require(final String actor, final String capability, final UUID company) {
-      if (actor == null || actor.isBlank() || company == null) {
-        throw new IllegalArgumentException("Authorized company scope is required.");
+      final UUID userId = requireCurrentSession(actor);
+      if (company == null
+          || !identity.isCompanyCapabilityGranted(userId, capability, company)) {
+        throw new AccessDeniedException("Finance permission denied for company scope.");
       }
     }
 
@@ -39,11 +79,38 @@ public final class FinanceInfrastructureAdapters {
       if (id == null) {
         throw new IllegalArgumentException("Cost center is required.");
       }
+      requireCurrentSession(actor);
     }
 
     public void requireDimension(final String actor, final String id) {
       if (id == null || id.isBlank()) {
         throw new IllegalArgumentException("Dimension is required.");
+      }
+      requireCurrentSession(actor);
+    }
+
+    private UUID requireCurrentSession(final String actor) {
+      final var authentication = SecurityContextHolder.getContext().getAuthentication();
+      if (!(authentication instanceof JwtAuthenticationToken token)
+          || !authentication.isAuthenticated()
+          || actor == null
+          || !authentication.getName().equals(actor)) {
+        throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
+      }
+      final UUID userId = identifier(authentication.getName());
+      final UUID sessionId = identifier(token.getToken().getClaimAsString("session_id"));
+      if (!identity.isSessionAuthorized(userId, sessionId)) {
+        throw new AuthenticationCredentialsNotFoundException(
+            "Authenticated session is invalid, expired, or revoked.");
+      }
+      return userId;
+    }
+
+    private static UUID identifier(final String value) {
+      try {
+        return UUID.fromString(value);
+      } catch (IllegalArgumentException | NullPointerException exception) {
+        throw new AuthenticationCredentialsNotFoundException("Invalid identity context.");
       }
     }
   }

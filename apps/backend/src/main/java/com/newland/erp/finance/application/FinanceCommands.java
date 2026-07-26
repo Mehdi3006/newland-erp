@@ -1,6 +1,7 @@
 package com.newland.erp.finance.application;
 
 import com.newland.erp.finance.domain.Account;
+import com.newland.erp.finance.domain.AccountingPeriod;
 import com.newland.erp.finance.domain.JournalEntry;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,6 +33,9 @@ public final class FinanceCommands {
       boolean closed,
       String actor) {}
 
+  public record TransitionPeriod(
+      UUID periodId, AccountingPeriod.State targetState, String actor) {}
+
   public record CreateJournal(
       String idempotencyKey,
       UUID companyId,
@@ -46,6 +50,9 @@ public final class FinanceCommands {
   public record EditJournal(UUID journalId, List<JournalEntry.JournalLine> lines, String actor) {}
 
   public record PostJournal(UUID journalId, String actor) {}
+
+  public record PostJournalWithSnapshot(
+      UUID journalId, com.newland.erp.finance.domain.JournalPostingSnapshot snapshot, String actor) {}
 
   public record ReverseJournal(UUID journalId, String idempotencyKey, String actor) {}
 

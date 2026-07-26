@@ -5,6 +5,7 @@ import com.newland.erp.finance.application.FinanceService;
 import com.newland.erp.finance.posting.application.PostingPorts;
 import com.newland.erp.finance.posting.application.PostingRuleEvaluator;
 import com.newland.erp.finance.domain.JournalEntry;
+import com.newland.erp.finance.domain.JournalPostingSnapshot;
 import com.newland.erp.finance.posting.domain.AccountingEvent;
 import com.newland.erp.finance.posting.domain.PostingException;
 import com.newland.erp.finance.posting.domain.PostingRule;
@@ -226,14 +227,20 @@ public final class PostingInfrastructureAdapters {
     private final FinanceService finance;
     private final FinanceRepository repository;
     private final PostingRuleEvaluator evaluator;
+    private final EnterpriseReferencePort enterprise;
+    private final MasterDataReferencePort masterData;
 
     public JournalAdapter(
         final FinanceService financeService,
         final FinanceRepository financeRepository,
-        final PostingRuleEvaluator postingRuleEvaluator) {
+        final PostingRuleEvaluator postingRuleEvaluator,
+        final EnterpriseReferencePort enterpriseReferencePort,
+        final MasterDataReferencePort masterDataReferencePort) {
       finance = financeService;
       repository = financeRepository;
       evaluator = postingRuleEvaluator;
+      enterprise = enterpriseReferencePort;
+      masterData = masterDataReferencePort;
     }
 
     public PostingPorts.JournalReference createAndPost(
@@ -246,8 +253,50 @@ public final class PostingInfrastructureAdapters {
               event.branchId(),
               event.accountingDate(),
               lines,
+              journalId -> snapshot(journalId, event),
               event.submittedBy());
       return new PostingPorts.JournalReference(journal.id(), journal.number());
+    }
+
+    private JournalPostingSnapshot snapshot(
+        final UUID journalEntryId, final AccountingEvent event) {
+      final String baseCurrency =
+          enterprise
+              .companyBaseCurrency(event.companyId())
+              .orElseThrow(() -> new PostingException("Company base currency is unavailable."));
+      final UUID rateId;
+      if (baseCurrency.equalsIgnoreCase(event.currencyCode())) {
+        rateId = null;
+      } else {
+        rateId =
+            masterData
+                .resolveExchangeRate(
+                    event.companyId(),
+                    event.currencyCode(),
+                    baseCurrency,
+                    event.accountingDate())
+                .map(MasterDataReferencePort.ExchangeRateSnapshot::rateId)
+                .orElseThrow(
+                    () -> new PostingException("Authoritative exchange-rate snapshot is missing."));
+      }
+      final Map<String, String> taxContext =
+          event.attributes().entrySet().stream()
+              .filter(entry -> entry.getKey().startsWith("tax"))
+              .collect(
+                  java.util.stream.Collectors.toUnmodifiableMap(
+                      Map.Entry::getKey, Map.Entry::getValue));
+      return new JournalPostingSnapshot(
+          journalEntryId,
+          event.currencyCode(),
+          baseCurrency,
+          rateId,
+          "MASTER_DATA",
+          "SPOT",
+          event.accountingDate(),
+          event.exchangeRate(),
+          event.amount(),
+          event.amount().multiply(event.exchangeRate()),
+          taxContext);
     }
 
     @Override

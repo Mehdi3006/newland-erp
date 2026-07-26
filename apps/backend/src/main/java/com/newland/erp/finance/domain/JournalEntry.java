@@ -84,6 +84,27 @@ public record JournalEntry(
         actor);
   }
 
+  public JournalEntry withLockVersion(final int version) {
+    if (version < 0) {
+      throw new IllegalArgumentException("Journal lock version cannot be negative.");
+    }
+    return new JournalEntry(
+        id,
+        number,
+        idempotencyKey,
+        companyId,
+        branchId,
+        fiscalYearId,
+        periodId,
+        postingDate,
+        status,
+        lines,
+        reversalOfId,
+        version,
+        createdAt,
+        actor);
+  }
+
   public static void validateLines(final List<JournalLine> entries) {
     if (entries.size() < 2) {
       throw new FinanceException("Journal entries require at least two lines.");

@@ -1,8 +1,8 @@
 # Current System State
 
-Status: Phase P3.11 Service and Warranty is approved, merged, and part of `main`. P3.12.0 Finance
-Foundation Contracts is implemented on a feature branch and awaiting review. No AP or AR workflow
-has started.
+Status: Phase P3.12.0 Finance Foundation Contracts is approved, merged, and part of `main`. P3.12.1
+General Ledger Core is implemented on a feature branch and awaiting review. No AP or AR workflow has
+started.
 
 ## Phase State
 
@@ -23,10 +23,10 @@ has started.
 - P3.9 Import Logistics is approved, merged, and part of `main`.
 - P3.10 CRM is approved, merged, and part of `main`.
 - P3.11 Service and Warranty is approved, merged, and part of `main`.
-- P3.12 General Ledger and AR/AP has a proposed architecture decision in
+- P3.12 General Ledger and AR/AP has an architecture decision in
   [`ADR-0002`](../adr/0002-p3-12-finance-architecture.md).
-- P3.12.0 Finance Foundation Contracts is implemented on a feature branch and awaiting review; it
-  adds contracts only and is not yet part of `main`.
+- P3.12.0 Finance Foundation Contracts is approved, merged, and part of `main`.
+- P3.12.1 General Ledger Core is implemented on a feature branch and awaiting review.
 - Accounts Receivable, Accounts Payable, Treasury, Pricing, HR, Manufacturing, and other adjacent
   ERP modules must not begin until their phase and blocking business decisions are explicitly
   approved.
@@ -114,6 +114,15 @@ has started.
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.12.1 hardens the existing Finance-owned General Ledger rather than creating a parallel ledger. It
+adds explicit `OPEN`, `CLOSING`, and `CLOSED` accounting-period states; controlled state
+transitions; durable company-currency, exchange-rate, amount, and tax snapshots; atomic journal
+idempotency; database-enforced double-entry balance; posted-journal, line, and snapshot
+immutability; company and branch integrity; real Identity capability/session enforcement; published
+Finance contract adapters; and forward-only migration `V20__general_ledger_core.sql`. Existing P3.8
+posting rules remain the only rule-driven journal creation path. No AP, AR, Treasury, UI, reporting,
+or financial statement capability is included.
 
 P3.12.0 adds only validated, persistence-neutral contracts for accounting-period eligibility,
 journal reconciliation views, Finance posting messages, financial-document numbering, currency, and
