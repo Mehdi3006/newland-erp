@@ -102,6 +102,8 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V11__finance_posting_integrity.sql',
   'apps/backend/src/main/resources/db/migration/V12__finance_posting_release_guards.sql',
   'apps/backend/src/main/resources/db/migration/V13__release_blocker_guards.sql',
+  'apps/backend/src/main/resources/db/migration/V14__procurement_finance_integration.sql',
+  'apps/backend/src/main/resources/db/migration/V15__procurement_accounting_outbox.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -200,6 +202,7 @@ const approvedProcurementTables = new Set([
   'procurement_purchase_order',
   'procurement_purchase_order_line',
   'procurement_purchase_order_revision',
+  'procurement_accounting_publication',
 ]);
 const approvedSalesTables = new Set([
   'sales_customer',
@@ -442,7 +445,7 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedFinanceTables.has(tableName) &&
       !approvedFinancePostingTables.has(tableName)
     ) {
-      return `ERP migrations may only define tables approved through P3.8: ${normalizedPath} (${tableName})`;
+      return `ERP migrations may only define tables approved through P3.9.1: ${normalizedPath} (${tableName})`;
     }
   }
 

@@ -1,33 +1,25 @@
 # Next Codex Task
 
-## Recommended Task: Await Explicit Approval for the Next Phase
+## Recommended Task: Review P3.9.1 Procurement to Finance Integration
 
-P3.8 Financial Posting Infrastructure is approved, merged, and complete. No subsequent phase may
-begin until it receives explicit architectural approval. Accounts Payable, Accounts Receivable,
-payments, banking, tax filing, fixed assets, budgeting, payroll, consolidation, source-module
-automatic posting, and reporting remain out of scope.
+P3.9.1 is implemented on a feature branch and must pass architecture review before merge. Review the
+Procurement accounting-event contract, published Finance API boundary, company authorization,
+idempotency/retry behavior, audit/outbox integration, and PostgreSQL migration.
 
-The next task is to await an explicit phase approval; do not start implementation.
+Do not begin Inventory, Sales, Manufacturing, Assets, or another integration phase.
 
-## Completed P3.8 Scope
+## P3.9.1 Review Scope
 
-- Immutable accounting-event acceptance and durable idempotent posting requests.
-- Versioned posting-rule lifecycle, precedence, conflict detection, deterministic evaluation, and
-  company/system authorization.
-- Real Finance journal creation and posting through the existing Finance application service.
-- Durable concurrency/retry handling and transactional audit/outbox persistence.
-- Explicit integration contracts for Enterprise Structure, Master Data, Identity, and Platform.
+- Five Procurement events only: purchase-order approval behind a disabled-by-default feature flag,
+  goods receipt, supplier invoice, supplier credit note, and supplier payment.
+- Procurement publishes immutable facts through Finance's named posting integration API.
+- Finance retains posting-rule evaluation, journal creation, idempotency, retry, and concurrency
+  ownership.
+- Identity company scope and Platform audit/outbox capabilities are reused through ports.
 
-## P3.8 Release Boundaries
+## P3.9.1 Release Boundaries
 
-- Do not introduce source-module automatic posting.
-- Do not implement Accounts Payable, Accounts Receivable, payments, banking, tax filing, fixed
-  assets, budgeting, payroll, consolidation, statements, or advanced reporting.
-- Keep Finance posting behind domain, application, API, and infrastructure layers.
+- Do not introduce accounting rules or direct journal access in Procurement.
+- Do not implement Inventory, Sales, Manufacturing, Assets, or unrelated operational behavior.
+- Keep Finance persistence and internal application/domain types inaccessible to Procurement.
 - Do not begin another phase without explicit architectural approval.
-
-## P3.8 Completion Record
-
-- Financial Posting domain model, ports, durable jOOQ adapter, services, REST API, DTOs, validation,
-  Flyway migrations, unit tests, PostgreSQL integration tests, and architecture tests are present.
-- No automatic Procurement, Sales, or Inventory posting was introduced.

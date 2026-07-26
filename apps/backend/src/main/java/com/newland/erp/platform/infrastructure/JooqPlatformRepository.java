@@ -123,6 +123,20 @@ public final class JooqPlatformRepository implements PlatformRepository {
     }
 
     @Override
+    public void retryOutboxEvent(final UUID eventId, final Instant nextAttemptAt) {
+        final int updated = dsl.update(table("platform_outbox"))
+                .set(text("status"), OutboxStatus.FAILED.name())
+                .set(instant("next_attempt_at"), nextAttemptAt)
+                .set(text("last_error"), (String) null)
+                .where(uuid("event_id").eq(eventId))
+                .and(text("status").eq(OutboxStatus.FAILED.name()))
+                .execute();
+        if (updated != 1) {
+            throw new IllegalStateException("Outbox event is not awaiting retry.");
+        }
+    }
+
+    @Override
     public AuditRecord insertAuditRecord(final AuditRecord record) {
         dsl.insertInto(table("platform_audit_log"))
                 .columns(id(), text("actor"), text("action"), text("target_type"), uuid("target_id"),

@@ -8,6 +8,8 @@ import java.util.UUID;
 public interface FinancialPostingPort {
   PostingResult submit(AccountingEvent event);
 
+  PostingResult submitAccepted(AccountingEvent event);
+
   PostingResult preview(AccountingEvent event);
 
   PostingRequest status(UUID postingRequestId);

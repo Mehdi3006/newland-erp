@@ -69,6 +69,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -880,6 +881,321 @@ final class JooqPostingRepositoryTest {
     }
   }
 
+  @Test
+  void procurementOutboxPostsOnceAndReturnsTheDurableResultForDuplicates() {
+    final ProcurementFixture fixture = procurementFixture(false);
+    final var event = procurementEvent(fixture);
+    final TransactionTemplate transaction =
+        new TransactionTemplate(fixture.serviceFixture().transactionManager());
+
+    final var accepted = transaction.execute(status -> fixture.service().publish(event));
+    final var duplicate =
+        transaction.execute(
+            status ->
+                fixture
+                    .service()
+                    .publish(
+                        new com.newland.erp.procurement.domain.ProcurementAccountingEvent(
+                            event.eventId(),
+                            event.idempotencyKey(),
+                            event.eventType(),
+                            event.referenceDocumentType(),
+                            event.referenceDocumentId(),
+                            event.referenceDocumentNumber(),
+                            event.supplierId(),
+                            event.companyId(),
+                            event.branchId(),
+                            event.eventDate(),
+                            event.accountingDate(),
+                            event.currencyCode(),
+                            event.exchangeRate(),
+                            event.amount(),
+                            event.taxAmount(),
+                            event.netAmount(),
+                            event.costCenterId(),
+                            event.profitCenterId(),
+                            event.financialDimensions(),
+                            event.description(),
+                            event.occurredAt().plusSeconds(1),
+                            event.actor())));
+
+    assertThat(accepted.status()).isEqualTo("PENDING");
+    assertThat(duplicate.status()).isEqualTo("PENDING");
+    assertThat(count("procurement_accounting_publication")).isEqualTo(1);
+    assertThat(countProcurementOutbox()).isEqualTo(1);
+    assertThat(countProcurementAudit()).isEqualTo(1);
+    assertThat(count("finance_accounting_event")).isZero();
+
+    assertThat(fixture.dispatcher().dispatchBatch(10)).isEqualTo(1);
+    assertThat(count("finance_accounting_event")).isEqualTo(1);
+    assertThat(count("finance_posting_request")).isEqualTo(1);
+    assertThat(count("finance_journal_entry")).isEqualTo(1);
+    assertThat(fixture.publications().findByEventId(event.eventId()))
+        .get()
+        .extracting(
+            com.newland.erp.procurement.application
+                .ProcurementAccountingPublicationRepository.Publication::status)
+        .isEqualTo("POSTED");
+
+    final var completed = transaction.execute(status -> fixture.service().publish(event));
+    assertThat(completed.status()).isEqualTo("POSTED");
+    assertThat(countProcurementOutbox()).isEqualTo(1);
+    assertThat(countProcurementAudit()).isEqualTo(1);
+  }
+
+  @Test
+  void procurementPublicationRollsBackBeforeItCanBeDispatched() {
+    final ProcurementFixture fixture = procurementFixture(false);
+    final var event = procurementEvent(fixture);
+    final TransactionTemplate transaction =
+        new TransactionTemplate(fixture.serviceFixture().transactionManager());
+
+    assertThatThrownBy(
+            () ->
+                transaction.executeWithoutResult(
+                    status -> {
+                      fixture.service().publish(event);
+                      throw new IllegalStateException("forced rollback");
+                    }))
+        .isInstanceOf(IllegalStateException.class);
+
+    assertThat(count("procurement_accounting_publication")).isZero();
+    assertThat(countProcurementOutbox()).isZero();
+    assertThat(countProcurementAudit()).isZero();
+    assertThat(count("finance_accounting_event")).isZero();
+  }
+
+  @Test
+  void concurrentDispatchersCreateOnePostingRequestAndOneJournal() throws Exception {
+    final ProcurementFixture fixture = procurementFixture(false);
+    final var event = procurementEvent(fixture);
+    new TransactionTemplate(fixture.serviceFixture().transactionManager())
+        .executeWithoutResult(status -> fixture.service().publish(event));
+    final CountDownLatch start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      final var first =
+          executor.submit(
+              () -> {
+                start.await();
+                return fixture.dispatcher().dispatchBatch(10);
+              });
+      final var second =
+          executor.submit(
+              () -> {
+                start.await();
+                return fixture.secondDispatcher().dispatchBatch(10);
+              });
+      start.countDown();
+      assertThat(first.get() + second.get()).isEqualTo(1);
+    }
+
+    assertThat(count("finance_accounting_event")).isEqualTo(1);
+    assertThat(count("finance_posting_request")).isEqualTo(1);
+    assertThat(count("finance_journal_entry")).isEqualTo(1);
+  }
+
+  @Test
+  void failedOutboxDeliveryRetriesAfterDispatcherRestart() {
+    final ProcurementFixture fixture = procurementFixture(true);
+    final var event = procurementEvent(fixture);
+    new TransactionTemplate(fixture.serviceFixture().transactionManager())
+        .executeWithoutResult(status -> fixture.service().publish(event));
+
+    assertThat(fixture.dispatcher().dispatchBatch(10)).isEqualTo(1);
+    assertThat(
+            fixture
+                .platformRepository()
+                .listPendingOutboxMessages(10)
+                .stream()
+                .anyMatch(message -> message.event().eventId().equals(event.eventId())))
+        .isTrue();
+    assertThat(count("finance_journal_entry")).isZero();
+
+    assertThat(fixture.secondDispatcher().dispatchBatch(10)).isEqualTo(1);
+    assertThat(count("finance_accounting_event")).isEqualTo(1);
+    assertThat(count("finance_posting_request")).isEqualTo(1);
+    assertThat(count("finance_journal_entry")).isEqualTo(1);
+  }
+
+  private ProcurementFixture procurementFixture(final boolean failFirstDelivery) {
+    final UUID companyId = UUID.randomUUID();
+    final UUID branchId = UUID.randomUUID();
+    final UUID supplierId = UUID.randomUUID();
+    final UUID debitAccount = UUID.randomUUID();
+    final UUID creditAccount = UUID.randomUUID();
+    seedCompanyBranch(companyId, branchId);
+    seedCurrency();
+    dsl.insertInto(DSL.table("procurement_supplier"))
+        .columns(
+            DSL.field("id"),
+            DSL.field("idempotency_key"),
+            DSL.field("supplier_code"),
+            DSL.field("name"),
+            DSL.field("status"),
+            DSL.field("created_at"))
+        .values(
+            supplierId,
+            "supplier-" + supplierId,
+            "SUP-" + supplierId.toString().substring(0, 8),
+            "Supplier",
+            "ACTIVE",
+            OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC))
+        .execute();
+    final ServiceFixture finance =
+        serviceFixture(
+            companyId, branchId, debitAccount, creditAccount, false, false);
+    saveActive(
+        finance.repository(),
+        procurementRule(companyId, debitAccount, creditAccount));
+    final var publications =
+        new com.newland.erp.procurement.infrastructure
+            .JooqProcurementAccountingPublicationRepository(
+            finance.transactionalDsl(), objectMapper);
+    final var security =
+        new com.newland.erp.procurement.application.ProcurementAccountingPorts.SecurityPort() {
+          @Override
+          public String currentActor() {
+            return "architect";
+          }
+
+          @Override
+          public void requireCompanyCapability(
+              final String actor, final String capability, final UUID scopedCompanyId) {
+            if (!companyId.equals(scopedCompanyId)) {
+              throw new AccessDeniedException("Wrong company.");
+            }
+          }
+        };
+    final var service =
+        new com.newland.erp.procurement.application.ProcurementAccountingService(
+            publications, finance.platform(), key -> true, security);
+    final var realFinance =
+        new com.newland.erp.finance.posting.application.integration
+            .FinancePostingIntegrationAdapter(finance.service());
+    final AtomicBoolean fail = new AtomicBoolean(failFirstDelivery);
+    final com.newland.erp.finance.posting.application.integration
+            .FinancePostingIntegrationPort financePort =
+        new com.newland.erp.finance.posting.application.integration
+            .FinancePostingIntegrationPort() {
+          @Override
+          public PostingReceipt publish(final AccountingEventMessage message) {
+            if (fail.compareAndSet(true, false)) {
+              throw new IllegalStateException("simulated Finance outage");
+            }
+            return realFinance.publish(message);
+          }
+
+          @Override
+          public PostingReceipt retry(final UUID postingRequestId) {
+            return realFinance.retry(postingRequestId);
+          }
+        };
+    final var consumer =
+        new com.newland.erp.procurement.application.ProcurementAccountingEventConsumer(
+            publications, financePort);
+    final var transactionalConsumer =
+        new com.newland.erp.platform.application.integration.PlatformOutboxConsumer() {
+          @Override
+          public boolean supports(final String sourceContext, final String eventType) {
+            return consumer.supports(sourceContext, eventType);
+          }
+
+          @Override
+          public void consume(final OutboxEvent event) {
+            new TransactionTemplate(finance.transactionManager())
+                .executeWithoutResult(status -> consumer.consume(event));
+          }
+        };
+    final var platformRepository =
+        new JooqPlatformRepository(finance.transactionalDsl(), objectMapper);
+    final var dispatcher =
+        new com.newland.erp.platform.application.OutboxDispatcher(
+            platformRepository,
+            event -> {},
+            List.of(transactionalConsumer),
+            finance.transactionManager(),
+            Clock.fixed(NOW, ZoneOffset.UTC));
+    final var secondDispatcher =
+        new com.newland.erp.platform.application.OutboxDispatcher(
+            new JooqPlatformRepository(finance.transactionalDsl(), objectMapper),
+            event -> {},
+            List.of(transactionalConsumer),
+            finance.transactionManager(),
+            Clock.fixed(NOW.plusSeconds(2), ZoneOffset.UTC));
+    return new ProcurementFixture(
+        companyId,
+        branchId,
+        supplierId,
+        finance,
+        publications,
+        service,
+        platformRepository,
+        dispatcher,
+        secondDispatcher);
+  }
+
+  private static com.newland.erp.procurement.domain.ProcurementAccountingEvent
+      procurementEvent(final ProcurementFixture fixture) {
+    return new com.newland.erp.procurement.domain.ProcurementAccountingEvent(
+        UUID.randomUUID(),
+        "supplier-invoice-" + UUID.randomUUID(),
+        com.newland.erp.procurement.domain.ProcurementAccountingEvent.EventType
+            .SUPPLIER_INVOICE_POSTED,
+        "SUPPLIER_INVOICE",
+        UUID.randomUUID(),
+        "INV-100",
+        fixture.supplierId(),
+        fixture.companyId(),
+        fixture.branchId(),
+        POSTING_DATE,
+        POSTING_DATE,
+        "USD",
+        BigDecimal.ONE,
+        new BigDecimal("100.00"),
+        new BigDecimal("10.00"),
+        new BigDecimal("90.00"),
+        null,
+        null,
+        Map.of(),
+        "Supplier invoice",
+        NOW,
+        "architect");
+  }
+
+  private static PostingRule procurementRule(
+      final UUID companyId, final UUID debitAccount, final UUID creditAccount) {
+    return new PostingRule(
+        UUID.randomUUID(),
+        "PROCUREMENT-INVOICE-POSTING",
+        "Procurement supplier invoice posting",
+        "SupplierInvoicePosted",
+        companyId,
+        LocalDate.parse("2026-01-01"),
+        null,
+        100,
+        PostingRule.Status.ACTIVE,
+        1,
+        List.of(
+            line(1, PostingRuleLine.Direction.DEBIT, debitAccount),
+            line(2, PostingRuleLine.Direction.CREDIT, creditAccount)),
+        NOW,
+        "architect",
+        NOW,
+        "architect");
+  }
+
+  private int countProcurementOutbox() {
+    return dsl.fetchCount(
+        DSL.table("platform_outbox"),
+        DSL.field("source_context", String.class).eq("procurement"));
+  }
+
+  private int countProcurementAudit() {
+    return dsl.fetchCount(
+        DSL.table("platform_audit_log"),
+        DSL.field("action", String.class).eq("PROCUREMENT_ACCOUNTING_EVENT_PUBLISHED"));
+  }
+
   private PostingInfrastructureAdapters.PlatformAdapter platformAdapter(
       final DSLContext context) {
     final PlatformService platform =
@@ -1033,7 +1349,8 @@ final class JooqPostingRepositoryTest {
             currentUsers,
             transactionManager,
             Clock.fixed(NOW, ZoneOffset.UTC));
-    return new ServiceFixture(service, postingRepository);
+    return new ServiceFixture(
+        service, postingRepository, platform, transactionManager, transactionalDsl);
   }
 
   private static PostingPorts.AuthorizationPort allowPostingAuthorization() {
@@ -1173,7 +1490,23 @@ final class JooqPostingRepositoryTest {
   }
 
   private record ServiceFixture(
-      PostingService service, JooqPostingRepository repository) {}
+      PostingService service,
+      JooqPostingRepository repository,
+      PlatformService platform,
+      DataSourceTransactionManager transactionManager,
+      DSLContext transactionalDsl) {}
+
+  private record ProcurementFixture(
+      UUID companyId,
+      UUID branchId,
+      UUID supplierId,
+      ServiceFixture serviceFixture,
+      com.newland.erp.procurement.application
+              .ProcurementAccountingPublicationRepository publications,
+      com.newland.erp.procurement.application.ProcurementAccountingService service,
+      JooqPlatformRepository platformRepository,
+      com.newland.erp.platform.application.OutboxDispatcher dispatcher,
+      com.newland.erp.platform.application.OutboxDispatcher secondDispatcher) {}
 
   private record SecurityFixture(
       UUID userId, PostingInfrastructureAdapters.SecurityAdapter adapter) {}

@@ -17,5 +17,18 @@ public interface PlatformAuditOutboxPort {
       UUID aggregateId,
       Map<String, String> payload);
 
+  default void publishEvent(
+      UUID eventId,
+      String sourceContext,
+      String eventType,
+      UUID aggregateId,
+      Map<String, String> payload) {
+    throw new UnsupportedOperationException("Explicit outbox event identifiers are unsupported.");
+  }
+
+  default void retryEvent(final UUID eventId) {
+    throw new UnsupportedOperationException("Outbox retry is unsupported.");
+  }
+
   void attachFile(String ownerContext, String ownerType, UUID ownerId, UUID fileId);
 }

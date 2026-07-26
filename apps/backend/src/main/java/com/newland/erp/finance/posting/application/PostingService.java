@@ -69,6 +69,11 @@ public final class PostingService implements FinancialPostingPort {
   @Override
   public PostingResult submit(final AccountingEvent event) {
     authorization.require(event.submittedBy(), "finance.posting.submit", event.companyId());
+    return submitAccepted(event);
+  }
+
+  @Override
+  public PostingResult submitAccepted(final AccountingEvent event) {
     final AcceptedPosting accepted = accept(event);
     final PostingRequest request = accepted.request();
     if (request.status() == PostingRequest.Status.REJECTED

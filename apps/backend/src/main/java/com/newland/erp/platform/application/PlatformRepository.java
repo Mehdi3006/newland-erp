@@ -28,6 +28,8 @@ public interface PlatformRepository {
     void markOutboxFailed(UUID messageId, int attempts, java.time.Instant nextAttemptAt,
                           String lastError);
 
+    void retryOutboxEvent(UUID eventId, java.time.Instant nextAttemptAt);
+
     AuditRecord insertAuditRecord(AuditRecord record);
 
     List<AuditRecord> listAuditRecords(String targetType, UUID targetId);

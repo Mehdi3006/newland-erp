@@ -9,6 +9,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.9.1 Procurement to Finance integration through immutable Procurement accounting events
+  and the published Finance Posting Engine API. The integration covers only purchase-order approval
+  behind a feature flag, goods receipt, supplier invoice, supplier credit note, and supplier payment
+  facts; accounting rules and journal creation remain owned by Finance.
+
 - Phase P3.8 Financial Posting Infrastructure for immutable accounting events, deterministic
   versioned posting rules, durable posting requests, explicit Finance posting ports, audit, outbox,
   and idempotent retry boundaries. No operational module is auto-posted.

@@ -1,6 +1,7 @@
 # Current System State
 
-Status: Phase P3.8 Financial Posting Infrastructure is approved, merged, and part of `main`.
+Status: Phase P3.9.1 Procurement to Finance Integration is implemented on a feature branch and
+awaiting architecture review.
 
 ## Phase State
 
@@ -17,6 +18,8 @@ Status: Phase P3.8 Financial Posting Infrastructure is approved, merged, and par
 - P3.7 Finance Foundation is approved, merged, and part of `main`.
 - P3.8 Financial Posting Infrastructure is approved, merged, and part of `main`; no operational
   module is connected to automatic posting.
+- P3.9.1 Procurement to Finance Integration is implemented and awaiting review; it is not yet part
+  of `main`.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
@@ -77,6 +80,9 @@ Status: Phase P3.8 Financial Posting Infrastructure is approved, merged, and par
   `V13__release_blocker_guards.sql`.
 - Financial Posting Infrastructure unit, PostgreSQL integration, concurrency, rollback, security,
   audit, outbox, and architecture tests under `apps/backend/src/test`.
+- Procurement to Finance integration through the Finance published posting API, with company-scoped
+  authorization, audit/outbox reuse, a purchase-order feature flag, and forward-only migration
+  `V14__procurement_finance_integration.sql`.
 
 ## Current Business Architecture Baseline
 
@@ -94,6 +100,12 @@ Status: Phase P3.8 Financial Posting Infrastructure is approved, merged, and par
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.9.1 connects only five Procurement accounting facts to the Finance Posting Engine:
+PurchaseOrderApproved (feature flagged), GoodsReceived, SupplierInvoicePosted,
+SupplierCreditNotePosted, and SupplierPaymentPosted. Procurement contains no accounting rules,
+creates no journal directly, and does not access Finance persistence. Inventory, Sales,
+Manufacturing, and Assets are unchanged.
 
 P3.8 adds only explicit financial-posting infrastructure: immutable accounting events, versioned
 posting rules, durable and idempotent posting requests, real Finance journal creation/posting,

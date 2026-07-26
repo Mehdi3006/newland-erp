@@ -37,8 +37,49 @@ final class ProcurementMigrationTest {
                      where table_schema = 'public'
                      """)) {
             resultSet.next();
-            assertThat(resultSet.getInt("procurement_tables")).isEqualTo(14);
+            assertThat(resultSet.getInt("procurement_tables")).isEqualTo(15);
             assertThat(resultSet.getInt("forbidden_tables")).isZero();
+        }
+    }
+
+    @Test
+    void installsProcurementFinancePermissionsFeatureFlagAndEventCatalog() throws Exception {
+        Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("classpath:db/migration")
+                .load()
+                .migrate();
+
+        try (var connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
+                POSTGRES.getPassword());
+             var statement = connection.createStatement()) {
+            try (var permissions = statement.executeQuery("""
+                    select count(*) as count
+                    from iam_permission
+                    where capability in ('procurement.finance.post', 'procurement.finance.retry')
+                    """)) {
+                permissions.next();
+                assertThat(permissions.getInt("count")).isEqualTo(2);
+            }
+            try (var flag = statement.executeQuery("""
+                    select enabled
+                    from platform_feature_flag
+                    where flag_key = 'procurement.finance.purchase-order-approved'
+                    """)) {
+                flag.next();
+                assertThat(flag.getBoolean("enabled")).isFalse();
+            }
+            try (var events = statement.executeQuery("""
+                    select count(*) as count
+                    from platform_domain_event_catalog
+                    where event_type in (
+                      'ProcurementAccountingEventPublished',
+                      'ProcurementFinancePostingRetried'
+                    )
+                    """)) {
+                events.next();
+                assertThat(events.getInt("count")).isEqualTo(2);
+            }
         }
     }
 }
