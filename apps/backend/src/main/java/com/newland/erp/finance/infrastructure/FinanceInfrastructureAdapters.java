@@ -77,7 +77,7 @@ public final class FinanceInfrastructureAdapters {
       }
       final String transactionCurrency =
           currencyIds.isEmpty() ? baseCurrency : currencyCode(currencyIds.getFirst());
-      final BigDecimal amount =
+      final BigDecimal baseAmount =
           journal.lines().stream()
               .map(JournalEntry.JournalLine::debit)
               .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -91,8 +91,8 @@ public final class FinanceInfrastructureAdapters {
             "SPOT",
             journal.postingDate(),
             BigDecimal.ONE,
-            amount,
-            amount,
+            baseAmount,
+            baseAmount,
             taxContext,
             postedAt);
       }
@@ -105,6 +105,19 @@ public final class FinanceInfrastructureAdapters {
                   journal.postingDate())
               .orElseThrow(
                   () -> new FinanceException("Authoritative exchange-rate snapshot is missing."));
+      final BigDecimal transactionDebit =
+          transactionAmount(journal, true);
+      final BigDecimal transactionCredit =
+          transactionAmount(journal, false);
+      if (transactionDebit.compareTo(transactionCredit) != 0) {
+        throw new FinanceException("Foreign-currency journal amounts are not balanced.");
+      }
+      final BigDecimal reconciledBaseAmount =
+          transactionDebit.multiply(rate.rate()).setScale(6, java.math.RoundingMode.HALF_UP);
+      if (reconciledBaseAmount.compareTo(baseAmount) != 0) {
+        throw new FinanceException(
+            "Foreign-currency amount and exchange rate do not reconcile to the journal.");
+      }
       journal.lines().stream()
           .map(JournalEntry.JournalLine::exchangeRateSnapshot)
           .filter(Objects::nonNull)
@@ -124,10 +137,27 @@ public final class FinanceInfrastructureAdapters {
           "SPOT",
           journal.postingDate(),
           rate.rate(),
-          amount,
-          amount.multiply(rate.rate()),
+          transactionDebit,
+          baseAmount,
           taxContext,
           postedAt);
+    }
+
+    private static BigDecimal transactionAmount(
+        final JournalEntry journal, final boolean debitSide) {
+      return journal.lines().stream()
+          .filter(
+              line ->
+                  debitSide ? line.debit().signum() > 0 : line.credit().signum() > 0)
+          .map(
+              line -> {
+                if (line.currencyAmount() == null) {
+                  throw new FinanceException(
+                      "Every foreign-currency journal line requires a currency amount.");
+                }
+                return line.currencyAmount().abs();
+              })
+          .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private String currencyCode(final UUID currencyId) {
@@ -184,6 +214,11 @@ public final class FinanceInfrastructureAdapters {
           || !identity.isCompanyCapabilityGranted(userId, capability, company)) {
         throw new AccessDeniedException("Finance permission denied for company scope.");
       }
+    }
+
+    @Override
+    public void authenticate(final String actor) {
+      requireCurrentSession(actor);
     }
 
     public void requireCostCenter(final String actor, final UUID id) {

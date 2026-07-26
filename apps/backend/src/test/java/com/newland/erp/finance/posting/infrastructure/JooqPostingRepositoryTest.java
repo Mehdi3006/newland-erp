@@ -1544,6 +1544,9 @@ final class JooqPostingRepositoryTest {
   private static FinancePorts.AuthorizationPort allowAllAuthorization() {
     return new FinancePorts.AuthorizationPort() {
       @Override
+      public void authenticate(final String actor) {}
+
+      @Override
       public void require(final String actor, final String capability, final UUID companyId) {}
 
       @Override

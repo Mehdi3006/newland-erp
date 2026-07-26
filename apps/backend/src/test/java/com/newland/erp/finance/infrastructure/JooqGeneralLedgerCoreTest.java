@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;
 import com.newland.erp.finance.application.FinanceCommands;
 import com.newland.erp.finance.application.FinancePorts;
 import com.newland.erp.finance.application.FinanceService;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.flywaydb.core.Flyway;
 import org.jooq.DSLContext;
 import org.jooq.JSONB;
@@ -34,6 +36,7 @@ import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -307,6 +310,127 @@ final class JooqGeneralLedgerCoreTest {
   }
 
   @Test
+  void persistsReconciledAuthoritativeForeignCurrencySnapshot() {
+    final UUID euroId = UUID.randomUUID();
+    seedCurrency(euroId, "EUR");
+    final BigDecimal baseAmount = new BigDecimal("110.000000");
+    final BigDecimal transactionAmount = new BigDecimal("100.000000");
+    final BigDecimal rate = new BigDecimal("1.100000000000");
+    final JournalEntry journal =
+        new JournalEntry(
+            UUID.randomUUID(),
+            "JE-" + UUID.randomUUID(),
+            "foreign-" + UUID.randomUUID(),
+            companyId,
+            branchId,
+            fiscalYearId,
+            periodId,
+            LocalDate.of(2026, 7, 15),
+            JournalEntry.JournalStatus.DRAFT,
+            List.of(
+                foreignLine(
+                    debitAccountId,
+                    baseAmount,
+                    BigDecimal.ZERO,
+                    euroId,
+                    transactionAmount,
+                    rate),
+                foreignLine(
+                    creditAccountId,
+                    BigDecimal.ZERO,
+                    baseAmount,
+                    euroId,
+                    transactionAmount,
+                    rate)),
+            null,
+            0,
+            NOW,
+            "actor");
+    repository.insertJournal(journal);
+    final FinanceInfrastructureAdapters.PostingSnapshotAdapter adapter =
+        new FinanceInfrastructureAdapters.PostingSnapshotAdapter(
+            enterpriseReferences(),
+            exchangeRateReferences(rate),
+            dsl);
+
+    final JournalPostingSnapshot snapshot =
+        adapter.resolve(journal, Map.of("taxCategory", "STANDARD"), NOW);
+    repository.savePostingSnapshot(snapshot);
+    repository.saveJournal(journal.post());
+
+    assertThat(repository.findPostingSnapshot(journal.id()))
+        .get()
+        .satisfies(
+            persisted -> {
+              assertThat(persisted.transactionCurrency()).isEqualTo("EUR");
+              assertThat(persisted.baseCurrency()).isEqualTo("USD");
+              assertThat(persisted.transactionAmount())
+                  .isEqualByComparingTo(transactionAmount);
+              assertThat(persisted.baseAmount()).isEqualByComparingTo(baseAmount);
+              assertThat(persisted.exchangeRate()).isEqualByComparingTo(rate);
+            });
+  }
+
+  @Test
+  void rejectsUnauthorizedPostingBeforeSnapshotResolutionOrPersistence() {
+    final JournalEntry draft = repository.insertJournal(journal("unauthorized-posting"));
+    final AtomicBoolean snapshotResolved = new AtomicBoolean();
+    final FinancePorts.AuthorizationPort denied =
+        new FinancePorts.AuthorizationPort() {
+          @Override
+          public void authenticate(final String actor) {
+            throw new AccessDeniedException("denied");
+          }
+
+          @Override
+          public void require(
+              final String actor, final String capability, final UUID scopedCompanyId) {
+            throw new AssertionError("Company authorization must not follow failed authentication.");
+          }
+
+          @Override
+          public void requireCostCenter(final String actor, final UUID costCenterId) {}
+
+          @Override
+          public void requireProfitCenter(final String actor, final UUID profitCenterId) {}
+
+          @Override
+          public void requireDimension(final String actor, final String dimensionCode) {}
+        };
+    final FinanceService deniedService =
+        new FinanceService(
+            repository,
+            (scopedCompanyId, scopedBranchId) -> {},
+            currencyId -> {},
+            denied,
+            (journal, taxContext, postedAt) -> {
+              snapshotResolved.set(true);
+              throw new AssertionError("Snapshot resolution must not occur.");
+            },
+            series -> series + "-" + UUID.randomUUID(),
+            (actor, action, id) -> {},
+            (type, aggregateId) -> {},
+            (aggregateId, attachmentId) -> {},
+            Clock.fixed(NOW, ZoneOffset.UTC));
+
+    assertThatThrownBy(
+            () ->
+                deniedService.postJournal(
+                    new FinanceCommands.PostJournal(
+                        draft.id(),
+                        AccountingPeriodContract.PostingPurpose.ORDINARY,
+                        Map.of(),
+                        "actor")))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(snapshotResolved).isFalse();
+    assertThat(repository.findJournal(draft.id()))
+        .get()
+        .extracting(JournalEntry::status)
+        .isEqualTo(JournalEntry.JournalStatus.DRAFT);
+    assertThat(repository.findPostingSnapshot(draft.id())).isEmpty();
+  }
+
+  @Test
   void atomicallyDeduplicatesConcurrentJournalCreation() throws Exception {
     final String key = "concurrent-" + UUID.randomUUID();
     final JournalEntry first = journal(key);
@@ -470,6 +594,26 @@ final class JooqGeneralLedgerCoreTest {
         BigDecimal.ONE);
   }
 
+  private JournalEntry.JournalLine foreignLine(
+      final UUID accountId,
+      final BigDecimal debit,
+      final BigDecimal credit,
+      final UUID currencyId,
+      final BigDecimal currencyAmount,
+      final BigDecimal exchangeRate) {
+    return new JournalEntry.JournalLine(
+        UUID.randomUUID(),
+        accountId,
+        debit,
+        credit,
+        null,
+        null,
+        null,
+        currencyId,
+        currencyAmount,
+        exchangeRate);
+  }
+
   private FinanceCommands.CreateJournal createJournal(
       final String key, final JournalEntry.JournalLine... lines) {
     return new FinanceCommands.CreateJournal(
@@ -488,6 +632,9 @@ final class JooqGeneralLedgerCoreTest {
   private FinanceService service() {
     final FinancePorts.AuthorizationPort authorization =
         new FinancePorts.AuthorizationPort() {
+          @Override
+          public void authenticate(final String actor) {}
+
           @Override
           public void require(
               final String actor, final String capability, final UUID scopedCompanyId) {}
@@ -550,6 +697,85 @@ final class JooqGeneralLedgerCoreTest {
   private Account account(final UUID id, final String code) {
     return new Account(
         id, companyId, code, "Account " + code, Account.AccountType.ASSET, null, true, true);
+  }
+
+  private void seedCurrency(final UUID currencyId, final String code) {
+    final OffsetDateTime now = OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC);
+    dsl.insertInto(DSL.table("master_data_record"))
+        .columns(
+            DSL.field("id"),
+            DSL.field("aggregate_type"),
+            DSL.field("code"),
+            DSL.field("display_name"),
+            DSL.field("active"),
+            DSL.field("attributes"),
+            DSL.field("version"),
+            DSL.field("created_at"),
+            DSL.field("updated_at"))
+        .values(
+            currencyId,
+            "CURRENCY",
+            code,
+            code,
+            true,
+            JSONB.valueOf("{}"),
+            0L,
+            now,
+            now)
+        .execute();
+  }
+
+  private EnterpriseReferencePort enterpriseReferences() {
+    return new EnterpriseReferencePort() {
+      @Override
+      public boolean isActiveCompany(final UUID scopedCompanyId) {
+        return companyId.equals(scopedCompanyId);
+      }
+
+      @Override
+      public boolean isActiveBranch(final UUID scopedCompanyId, final UUID scopedBranchId) {
+        return companyId.equals(scopedCompanyId) && branchId.equals(scopedBranchId);
+      }
+
+      @Override
+      public java.util.Optional<String> companyBaseCurrency(final UUID scopedCompanyId) {
+        return companyId.equals(scopedCompanyId)
+            ? java.util.Optional.of("USD")
+            : java.util.Optional.empty();
+      }
+    };
+  }
+
+  private MasterDataReferencePort exchangeRateReferences(final BigDecimal rate) {
+    return new MasterDataReferencePort() {
+      @Override
+      public boolean isActiveCurrency(final String currencyCode) {
+        return "EUR".equals(currencyCode) || "USD".equals(currencyCode);
+      }
+
+      @Override
+      public java.util.Optional<ExchangeRateSnapshot> resolveExchangeRate(
+          final UUID scopedCompanyId,
+          final String sourceCurrency,
+          final String targetCurrency,
+          final LocalDate effectiveDate) {
+        if (!companyId.equals(scopedCompanyId)
+            || !"EUR".equals(sourceCurrency)
+            || !"USD".equals(targetCurrency)
+            || !LocalDate.of(2026, 7, 15).equals(effectiveDate)) {
+          return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(
+            new ExchangeRateSnapshot(
+                UUID.randomUUID(),
+                companyId,
+                "EUR",
+                "USD",
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 31),
+                rate));
+      }
+    };
   }
 
   private void seedCompany() {

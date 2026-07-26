@@ -16,6 +16,8 @@ public final class FinancePorts {
   }
 
   public interface AuthorizationPort {
+    void authenticate(String actor);
+
     void require(String actor, String capability, UUID companyId);
 
     void requireCostCenter(String actor, UUID costCenterId);

@@ -180,21 +180,26 @@ public final class FinanceService {
 
   @Transactional
   public JournalEntry postJournal(final FinanceCommands.PostJournal command) {
+    authorization.authenticate(command.actor());
     final JournalEntry entry = journal(command.journalId());
+    final AccountingPeriodContract.PostingPurpose postingPurpose =
+        purpose(command.postingPurpose());
+    authorizePosting(entry, postingPurpose, command.actor());
     final JournalPostingSnapshot snapshot =
         snapshots.resolve(entry, command.taxContext(), Instant.now(clock));
-    return postJournalInternal(
-        entry, purpose(command.postingPurpose()), snapshot, command.actor());
+    return postJournalInternal(entry, postingPurpose, snapshot, command.actor());
   }
 
   @Transactional
   public JournalEntry postJournalWithSnapshot(
       final FinanceCommands.PostJournalWithSnapshot command) {
+    authorization.authenticate(command.actor());
+    final JournalEntry entry = journal(command.journalId());
+    final AccountingPeriodContract.PostingPurpose postingPurpose =
+        purpose(command.postingPurpose());
+    authorizePosting(entry, postingPurpose, command.actor());
     return postJournalInternal(
-        journal(command.journalId()),
-        purpose(command.postingPurpose()),
-        command.snapshot(),
-        command.actor());
+        entry, postingPurpose, command.snapshot(), command.actor());
   }
 
   private JournalEntry postJournalInternal(
@@ -202,10 +207,6 @@ public final class FinanceService {
       final AccountingPeriodContract.PostingPurpose postingPurpose,
       final JournalPostingSnapshot snapshot,
       final String actor) {
-    authorization.require(actor, "finance.journal.post", entry.companyId());
-    if (postingPurpose == AccountingPeriodContract.PostingPurpose.CLOSE_ADJUSTMENT) {
-      authorization.require(actor, "finance.journal.close-adjustment.post", entry.companyId());
-    }
     validatePeriod(
         entry.companyId(),
         entry.fiscalYearId(),
@@ -221,6 +222,16 @@ public final class FinanceService {
     audit.record(actor, "FINANCE_JOURNAL_POSTED", posted.id());
     outbox.publish("FinanceJournalPosted", posted.id());
     return posted;
+  }
+
+  private void authorizePosting(
+      final JournalEntry entry,
+      final AccountingPeriodContract.PostingPurpose postingPurpose,
+      final String actor) {
+    authorization.require(actor, "finance.journal.post", entry.companyId());
+    if (postingPurpose == AccountingPeriodContract.PostingPurpose.CLOSE_ADJUSTMENT) {
+      authorization.require(actor, "finance.journal.close-adjustment.post", entry.companyId());
+    }
   }
 
   @Transactional
