@@ -1,7 +1,8 @@
 # Current System State
 
-Status: Phase P3.11 Service and Warranty is implemented on a feature branch and awaiting
-architecture review.
+Status: Phase P3.11 Service and Warranty is approved, merged, and part of `main`. P3.12.0 Finance
+Foundation Contracts is implemented on a feature branch and awaiting review. No AP or AR workflow
+has started.
 
 ## Phase State
 
@@ -21,9 +22,14 @@ architecture review.
 - P3.9.1 Procurement to Finance Integration is approved, merged, and part of `main`.
 - P3.9 Import Logistics is approved, merged, and part of `main`.
 - P3.10 CRM is approved, merged, and part of `main`.
-- P3.11 Service and Warranty is implemented and awaiting review; it is not yet part of `main`.
-- Pricing, Accounts Receivable, Accounting, HR, Manufacturing, and other adjacent ERP modules have
-  not started and must not begin until explicitly approved.
+- P3.11 Service and Warranty is approved, merged, and part of `main`.
+- P3.12 General Ledger and AR/AP has a proposed architecture decision in
+  [`ADR-0002`](../adr/0002-p3-12-finance-architecture.md).
+- P3.12.0 Finance Foundation Contracts is implemented on a feature branch and awaiting review; it
+  adds contracts only and is not yet part of `main`.
+- Accounts Receivable, Accounts Payable, Treasury, Pricing, HR, Manufacturing, and other adjacent
+  ERP modules must not begin until their phase and blocking business decisions are explicitly
+  approved.
 
 ## Current Repository Content
 
@@ -108,6 +114,15 @@ architecture review.
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.12.0 adds only validated, persistence-neutral contracts for accounting-period eligibility,
+journal reconciliation views, Finance posting messages, financial-document numbering, currency, and
+exchange-rate snapshots. It introduces no AP or AR workflow, database table, REST endpoint, or UI.
+The proposed P3.12 architecture keeps General Ledger in the existing Finance bounded context and
+introduces Accounts Payable and Accounts Receivable as separate future subledger bounded contexts
+using published Finance posting contracts. Fiscal, currency, tax/statutory, matching, credit,
+allocation, numbering, inventory-valuation, and service-accounting business inputs remain open as
+documented in [`ADR-0002`](../adr/0002-p3-12-finance-architecture.md).
 
 P3.11 adds configurable warranty policies, service-ticket lifecycle control, validation against
 Sales-owned customer and delivered-order evidence, Product Catalog references, Inventory serial

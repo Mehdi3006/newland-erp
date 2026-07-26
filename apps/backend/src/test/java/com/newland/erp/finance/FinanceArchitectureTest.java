@@ -41,4 +41,18 @@ final class FinanceArchitectureTest {
             "org.jooq..")
         .check(new ClassFileImporter().importPackages("com.newland.erp.finance.posting"));
   }
+
+  @Test
+  void publishedFoundationContractsDoNotDependOnAdaptersOrApi() {
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAPackage("com.newland.erp.finance.application.integration..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "com.newland.erp.finance.api..",
+            "com.newland.erp.finance.infrastructure..",
+            "org.jooq..")
+        .check(new ClassFileImporter().importPackages("com.newland.erp.finance"));
+  }
 }
