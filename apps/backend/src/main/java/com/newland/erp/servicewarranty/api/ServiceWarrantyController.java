@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,10 +47,11 @@ public final class ServiceWarrantyController {
   }
 
   @GetMapping("/tickets/{ticketId}")
-  public ServiceWarrantyDtos.TicketResponse ticket(@PathVariable final UUID ticketId) {
+  public ServiceWarrantyDtos.TicketResponse ticket(
+      @PathVariable final UUID ticketId, @RequestParam final UUID companyId) {
     final String actor = security.currentActor();
-    final ServiceTicket ticket = service.ticket(ticketId);
-    security.require(actor, "service.ticket.manage", ticket.companyId());
+    security.require(actor, "service.ticket.manage", companyId);
+    final ServiceTicket ticket = service.ticket(ticketId, companyId);
     return ServiceWarrantyDtos.TicketResponse.from(ticket);
   }
 

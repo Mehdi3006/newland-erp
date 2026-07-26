@@ -1,3 +1,28 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE sales_order_line
+    ADD COLUMN delivered_at timestamptz;
+
+UPDATE sales_order_line AS line
+SET delivered_at = evidence.first_delivered_at
+FROM (
+    SELECT sales_order_line.id,
+           MIN(platform_audit_log.occurred_at) AS first_delivered_at
+    FROM sales_order_line
+    JOIN platform_audit_log
+      ON platform_audit_log.target_id = sales_order_line.sales_order_id
+     AND platform_audit_log.action = 'SALES_ORDER_DELIVERY_TRACKED'
+    WHERE sales_order_line.delivered_quantity > 0
+    GROUP BY sales_order_line.id
+) AS evidence
+WHERE line.id = evidence.id;
+
+ALTER TABLE sales_order_line
+    ADD CONSTRAINT ck_sales_order_line_delivery_time CHECK (
+        (delivered_quantity = 0 AND delivered_at IS NULL)
+        OR (delivered_quantity > 0 AND delivered_at IS NOT NULL)
+    );
+
 CREATE TABLE service_warranty_policy (
     id uuid PRIMARY KEY,
     company_id uuid NOT NULL REFERENCES company(id),
@@ -14,6 +39,14 @@ CREATE TABLE service_warranty_policy (
     ),
     CONSTRAINT uq_service_policy_scope UNIQUE (company_id, product_id, effective_from)
 );
+
+ALTER TABLE service_warranty_policy
+    ADD CONSTRAINT ex_service_policy_active_period
+    EXCLUDE USING gist (
+        company_id WITH =,
+        (COALESCE(product_id, '00000000-0000-0000-0000-000000000000'::uuid)) WITH =,
+        daterange(effective_from, COALESCE(effective_to, 'infinity'::date), '[]') WITH &&
+    ) WHERE (active);
 
 CREATE TABLE service_ticket (
     id uuid PRIMARY KEY,

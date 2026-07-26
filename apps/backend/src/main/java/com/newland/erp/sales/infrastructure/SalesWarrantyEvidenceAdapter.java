@@ -2,7 +2,6 @@ package com.newland.erp.sales.infrastructure;
 
 import com.newland.erp.sales.application.SalesRepository;
 import com.newland.erp.sales.application.integration.SalesWarrantyEvidencePort;
-import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -25,19 +24,24 @@ public final class SalesWarrantyEvidenceAdapter implements SalesWarrantyEvidence
         repository
             .findSalesOrder(salesOrderId)
             .orElseThrow(() -> new IllegalArgumentException("Sales warranty evidence not found."));
-    final boolean delivered =
-        order.companyId().equals(companyId)
-            && order.customerId().equals(customerId)
-            && order.lines().stream()
-                .anyMatch(
-                    line ->
-                        line.productId().equals(productId)
-                            && line.skuId().equals(skuId)
-                            && line.deliveredQuantity().isPositive());
-    if (!delivered) {
+    if (!order.companyId().equals(companyId) || !order.customerId().equals(customerId)) {
       throw new IllegalArgumentException("Sales order does not prove delivered warranty product.");
     }
+    final var deliveredLine =
+        order.lines().stream()
+            .filter(
+                line ->
+                    line.productId().equals(productId)
+                        && line.skuId().equals(skuId)
+                        && line.deliveredQuantity().isPositive()
+                        && line.deliveredAt() != null)
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Sales order does not prove delivered warranty product."));
     return new SalesEvidence(
-        order.id(), order.createdAt().atZone(ZoneOffset.UTC).toLocalDate());
+        order.id(),
+        deliveredLine.deliveredAt().atZone(java.time.ZoneOffset.UTC).toLocalDate());
   }
 }

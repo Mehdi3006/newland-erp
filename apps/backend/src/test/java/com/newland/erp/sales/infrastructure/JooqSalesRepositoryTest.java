@@ -83,7 +83,7 @@ final class JooqSalesRepositoryTest {
         return new SalesOrder(UUID.randomUUID(), "SO-LOCK", "order-lock", null, customerId, UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), SalesOrderStatus.DRAFT,
                 0, List.of(new SalesOrder.SalesOrderLine(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                "SKU-LOCK", quantity("1"), zero, zero, zero, UUID.randomUUID())), 0,
+                "SKU-LOCK", quantity("1"), zero, zero, zero, UUID.randomUUID(), null)), 0,
                 LocalDate.parse("2026-12-31"), Instant.now(), "architect");
     }
 

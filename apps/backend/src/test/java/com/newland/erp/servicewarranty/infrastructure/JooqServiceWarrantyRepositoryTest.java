@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.flywaydb.core.Flyway;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.AfterEach;
@@ -112,6 +113,78 @@ final class JooqServiceWarrantyRepositoryTest {
   }
 
   @Test
+  void rejectsOverlappingProductAndCompanyDefaultPolicies() {
+    final WarrantyPolicy productPolicy = policy();
+    repository.insertPolicy(productPolicy);
+    final WarrantyPolicy overlappingProduct =
+        new WarrantyPolicy(
+            UUID.randomUUID(),
+            COMPANY_ID,
+            PRODUCT_ID,
+            180,
+            false,
+            false,
+            LocalDate.of(2026, 6, 1),
+            LocalDate.of(2027, 1, 1),
+            true);
+
+    assertThat(repository.hasOverlappingPolicy(overlappingProduct)).isTrue();
+    assertThatThrownBy(() -> repository.insertPolicy(overlappingProduct))
+        .isInstanceOf(DataIntegrityViolationException.class);
+
+    final WarrantyPolicy companyDefault =
+        new WarrantyPolicy(
+            UUID.randomUUID(),
+            COMPANY_ID,
+            null,
+            90,
+            false,
+            false,
+            LocalDate.of(2026, 1, 1),
+            null,
+            true);
+    repository.insertPolicy(companyDefault);
+    final WarrantyPolicy overlappingDefault =
+        new WarrantyPolicy(
+            UUID.randomUUID(),
+            COMPANY_ID,
+            null,
+            120,
+            false,
+            false,
+            LocalDate.of(2026, 2, 1),
+            null,
+            true);
+
+    assertThatThrownBy(() -> repository.insertPolicy(overlappingDefault))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  void concurrentOverlappingPolicyCreationPersistsOnlyOnePolicy() throws Exception {
+    final WarrantyPolicy first = policy();
+    final WarrantyPolicy second =
+        new WarrantyPolicy(
+            UUID.randomUUID(),
+            COMPANY_ID,
+            PRODUCT_ID,
+            180,
+            false,
+            false,
+            LocalDate.of(2026, 6, 1),
+            null,
+            true);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      final List<Callable<Boolean>> calls =
+          List.of(() -> insertPolicyUsingNewConnection(first), () -> insertPolicyUsingNewConnection(second));
+
+      assertThat(executor.invokeAll(calls))
+          .extracting(result -> result.get())
+          .containsExactlyInAnyOrder(true, false);
+    }
+  }
+
+  @Test
   void rollbackRemovesTicketAndRetrySucceeds() throws Exception {
     final ServiceTicket ticket = ticket(UUID.randomUUID(), "rollback-key");
     connection.setAutoCommit(false);
@@ -154,6 +227,17 @@ final class JooqServiceWarrantyRepositoryTest {
     try (Connection concurrent = newConnection()) {
       return new JooqServiceWarrantyRepository(DSL.using(concurrent))
           .insertTicketIfAbsent(ticket);
+    }
+  }
+
+  private boolean insertPolicyUsingNewConnection(final WarrantyPolicy policy) throws SQLException {
+    try (Connection concurrent = newConnection()) {
+      try {
+        new JooqServiceWarrantyRepository(DSL.using(concurrent)).insertPolicy(policy);
+        return true;
+      } catch (DataIntegrityViolationException exception) {
+        return false;
+      }
     }
   }
 

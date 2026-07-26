@@ -11,6 +11,7 @@ import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Repository
 public final class JooqServiceWarrantyRepository implements ServiceWarrantyRepository {
@@ -50,6 +51,13 @@ public final class JooqServiceWarrantyRepository implements ServiceWarrantyRepos
   }
 
   @Override
+  public Optional<ServiceTicket> findTicket(final UUID ticketId, final UUID companyId) {
+    return dsl.selectFrom(DSL.table("service_ticket"))
+        .where(uuid("id").eq(ticketId).and(uuid("company_id").eq(companyId)))
+        .fetchOptional(this::ticket);
+  }
+
+  @Override
   public Optional<ServiceTicket> findTicketByIdempotencyKey(final String idempotencyKey) {
     return dsl.selectFrom(DSL.table("service_ticket"))
         .where(text("idempotency_key").eq(idempotencyKey))
@@ -77,17 +85,44 @@ public final class JooqServiceWarrantyRepository implements ServiceWarrantyRepos
 
   @Override
   public WarrantyPolicy insertPolicy(final WarrantyPolicy policy) {
-    dsl.insertInto(DSL.table("service_warranty_policy"))
-        .columns(
-            field("id"), field("company_id"), field("product_id"), field("duration_days"),
-            field("serial_required"), field("sales_evidence_required"), field("effective_from"),
-            field("effective_to"), field("active"))
-        .values(
-            policy.id(), policy.companyId(), policy.productId(), policy.durationDays(),
-            policy.serialRequired(), policy.salesEvidenceRequired(), policy.effectiveFrom(),
-            policy.effectiveTo(), policy.active())
-        .execute();
+    try {
+      dsl.insertInto(DSL.table("service_warranty_policy"))
+          .columns(
+              field("id"), field("company_id"), field("product_id"), field("duration_days"),
+              field("serial_required"), field("sales_evidence_required"), field("effective_from"),
+              field("effective_to"), field("active"))
+          .values(
+              policy.id(), policy.companyId(), policy.productId(), policy.durationDays(),
+              policy.serialRequired(), policy.salesEvidenceRequired(), policy.effectiveFrom(),
+              policy.effectiveTo(), policy.active())
+          .execute();
+    } catch (org.jooq.exception.DataAccessException exception) {
+      throw new DataIntegrityViolationException("Warranty policy persistence failed.", exception);
+    }
     return policy;
+  }
+
+  @Override
+  public boolean hasOverlappingPolicy(final WarrantyPolicy policy) {
+    if (!policy.active()) {
+      return false;
+    }
+    var overlap =
+        uuid("company_id")
+            .eq(policy.companyId())
+            .and(uuid("product_id").isNotDistinctFrom(policy.productId()))
+            .and(bool("active").eq(true))
+            .and(
+                date("effective_to")
+                    .isNull()
+                    .or(date("effective_to").ge(policy.effectiveFrom())));
+    if (policy.effectiveTo() != null) {
+      overlap = overlap.and(date("effective_from").le(policy.effectiveTo()));
+    }
+    return dsl.fetchExists(
+        dsl.selectOne()
+            .from(DSL.table("service_warranty_policy"))
+            .where(overlap));
   }
 
   @Override

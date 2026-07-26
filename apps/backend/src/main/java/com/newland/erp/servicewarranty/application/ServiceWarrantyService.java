@@ -14,10 +14,11 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public final class ServiceWarrantyService {
+public class ServiceWarrantyService {
   private final ServiceWarrantyRepository repository;
   private final ServiceWarrantySecurityPort security;
   private final EnterpriseReferencePort enterprise;
@@ -58,7 +59,16 @@ public final class ServiceWarrantyService {
     if (policy.productId() != null) {
       products.requireProduct(policy.productId());
     }
-    final WarrantyPolicy saved = repository.insertPolicy(policy);
+    if (repository.hasOverlappingPolicy(policy)) {
+      throw new IllegalArgumentException("Active warranty policy effective periods overlap.");
+    }
+    final WarrantyPolicy saved;
+    try {
+      saved = repository.insertPolicy(policy);
+    } catch (DataIntegrityViolationException exception) {
+      throw new IllegalArgumentException(
+          "Active warranty policy effective periods overlap.", exception);
+    }
     audit(actor, "SERVICE_WARRANTY_POLICY_CREATED", "WarrantyPolicy", saved.id());
     return saved;
   }
@@ -163,6 +173,13 @@ public final class ServiceWarrantyService {
   public ServiceTicket ticket(final UUID ticketId) {
     return repository
         .findTicket(ticketId)
+        .orElseThrow(() -> new IllegalArgumentException("Service ticket not found."));
+  }
+
+  @Transactional(readOnly = true)
+  public ServiceTicket ticket(final UUID ticketId, final UUID companyId) {
+    return repository
+        .findTicket(ticketId, companyId)
         .orElseThrow(() -> new IllegalArgumentException("Service ticket not found."));
   }
 

@@ -202,11 +202,12 @@ public final class JooqSalesRepository implements SalesRepository {
         order.lines().forEach(line -> dsl.insertInto(table("sales_order_line"))
                 .columns(id(), uuid("sales_order_id"), uuid("product_id"), uuid("sku_id"), text("sku_code"),
                         decimal("ordered_quantity"), decimal("reserved_quantity"), decimal("delivered_quantity"),
-                        decimal("cancelled_quantity"), text("uom_code"), uuid("tax_category_id"))
+                        decimal("cancelled_quantity"), text("uom_code"), uuid("tax_category_id"),
+                        instant("delivered_at"))
                 .values(line.id(), order.id(), line.productId(), line.skuId(), line.skuCode(),
                         line.orderedQuantity().value(), line.reservedQuantity().value(),
                         line.deliveredQuantity().value(), line.cancelledQuantity().value(),
-                        line.orderedQuantity().uomCode(), line.taxCategoryId())
+                        line.orderedQuantity().uomCode(), line.taxCategoryId(), line.deliveredAt())
                 .execute());
     }
 
@@ -321,7 +322,12 @@ public final class JooqSalesRepository implements SalesRepository {
                         new SalesQuantity(record.get(decimal("reserved_quantity")), record.get(text("uom_code"))),
                         new SalesQuantity(record.get(decimal("delivered_quantity")), record.get(text("uom_code"))),
                         new SalesQuantity(record.get(decimal("cancelled_quantity")), record.get(text("uom_code"))),
-                        record.get(uuid("tax_category_id"))));
+                        record.get(uuid("tax_category_id")), nullableInstant(record, "delivered_at")));
+    }
+
+    private static Instant nullableInstant(final Record record, final String name) {
+        final OffsetDateTime value = record.get(DSL.field(name, OffsetDateTime.class));
+        return value == null ? null : value.toInstant();
     }
 
     private static Table<Record> table(final String name) {

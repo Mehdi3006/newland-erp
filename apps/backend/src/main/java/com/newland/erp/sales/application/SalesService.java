@@ -215,7 +215,7 @@ public final class SalesService {
         authorization.requirePermission(command.actor(), "sales.order.delivery.track");
         final SalesOrder order = salesOrder(command.salesOrderId());
         assertLineExists(order, command.lineId());
-        final SalesOrder updated = order.deliver(command.lineId(), command.quantity());
+        final SalesOrder updated = order.deliver(command.lineId(), command.quantity(), now());
         inventory.requestDelivery(updated.id(), command.lineId(), command.quantity());
         repository.updateSalesOrder(updated);
         audit.record(command.actor(), "SALES_ORDER_DELIVERY_TRACKED", updated.id());

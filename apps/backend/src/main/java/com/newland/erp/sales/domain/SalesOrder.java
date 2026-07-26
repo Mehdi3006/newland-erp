@@ -43,9 +43,10 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
         return withStatus(SalesOrderStatus.PARTIALLY_RESERVED, nextLines);
     }
 
-    public SalesOrder deliver(final UUID lineId, final SalesQuantity quantity) {
+    public SalesOrder deliver(final UUID lineId, final SalesQuantity quantity, final Instant deliveredAt) {
         requireFulfillable();
-        return withProgress(lines.stream().map(line -> line.id().equals(lineId) ? line.deliver(quantity) : line)
+        return withProgress(lines.stream()
+                .map(line -> line.id().equals(lineId) ? line.deliver(quantity, deliveredAt) : line)
                 .toList(), SalesOrderStatus.PARTIALLY_DELIVERED);
     }
 
@@ -85,7 +86,7 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
 
     public record SalesOrderLine(UUID id, UUID productId, UUID skuId, String skuCode, SalesQuantity orderedQuantity,
                                  SalesQuantity reservedQuantity, SalesQuantity deliveredQuantity,
-                                 SalesQuantity cancelledQuantity, UUID taxCategoryId) {
+                                 SalesQuantity cancelledQuantity, UUID taxCategoryId, Instant deliveredAt) {
         public SalesOrderLine {
             if (id == null || productId == null || skuId == null || orderedQuantity == null
                     || reservedQuantity == null || deliveredQuantity == null || cancelledQuantity == null
@@ -96,6 +97,9 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
             if (reservedQuantity.add(deliveredQuantity).add(cancelledQuantity).isGreaterThan(orderedQuantity)) {
                 throw new SalesConflictException("Reserved plus delivered plus cancelled cannot exceed ordered.");
             }
+            if (deliveredQuantity.isPositive() != (deliveredAt != null)) {
+                throw new SalesConflictException("Delivered quantity requires an authoritative delivery time.");
+            }
         }
 
         public SalesQuantity remainingQuantity() {
@@ -104,17 +108,18 @@ public record SalesOrder(UUID id, String orderNumber, String idempotencyKey, UUI
 
         public SalesOrderLine reserve(final SalesQuantity quantity) {
             return new SalesOrderLine(id, productId, skuId, skuCode, orderedQuantity, reservedQuantity.add(quantity),
-                    deliveredQuantity, cancelledQuantity, taxCategoryId);
+                    deliveredQuantity, cancelledQuantity, taxCategoryId, deliveredAt);
         }
 
-        public SalesOrderLine deliver(final SalesQuantity quantity) {
+        public SalesOrderLine deliver(final SalesQuantity quantity, final Instant occurredAt) {
             return new SalesOrderLine(id, productId, skuId, skuCode, orderedQuantity, reservedQuantity,
-                    deliveredQuantity.add(quantity), cancelledQuantity, taxCategoryId);
+                    deliveredQuantity.add(quantity), cancelledQuantity, taxCategoryId,
+                    deliveredAt == null ? java.util.Objects.requireNonNull(occurredAt) : deliveredAt);
         }
 
         public SalesOrderLine cancelRemaining() {
             return new SalesOrderLine(id, productId, skuId, skuCode, orderedQuantity, reservedQuantity,
-                    deliveredQuantity, remainingQuantity(), taxCategoryId);
+                    deliveredQuantity, remainingQuantity(), taxCategoryId, deliveredAt);
         }
     }
 }
