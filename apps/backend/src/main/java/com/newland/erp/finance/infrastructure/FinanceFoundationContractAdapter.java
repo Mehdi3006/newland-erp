@@ -182,13 +182,8 @@ public final class FinanceFoundationContractAdapter
       requireSameAssignmentScope(request, concurrent);
       return concurrent;
     }
-    return new FinancialDocumentNumber.Assignment(
-        number,
-        request.documentType(),
-        request.companyId(),
-        request.fiscalYearId(),
-        request.documentId(),
-        assignedAt);
+    return findNumberAssignment(request.idempotencyKey())
+        .orElseThrow(() -> new FinanceException("Financial number assignment was not persisted."));
   }
 
   @Override
