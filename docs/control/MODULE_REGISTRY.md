@@ -16,8 +16,8 @@ This registry tracks business architecture readiness. It is not a code module re
 | Finance                         | Defined                  | Implemented           | P3.7 approved and merged; no AP/AR/automatic subledger posting.        |
 | Finance Posting Infrastructure  | Defined                  | Implemented           | P3.8 approved and merged; no Procurement/Sales/Inventory auto-posting. |
 | Procurement-Finance Integration | Defined                  | Implemented           | P3.9.1 approved and merged.                                            |
-| CRM                             | Defined                  | In review             | P3.10 uses the Sales-owned customer through a published reference API. |
-| Service and Warranty            | Defined                  | Not started           | Requires warranty policy.                                              |
+| CRM                             | Defined                  | Implemented           | P3.10 approved and merged; Sales remains customer master owner.        |
+| Service and Warranty            | Defined                  | In review             | P3.11 configurable policy and validation foundation.                   |
 | General Ledger                  | Defined                  | Not started           | Requires fiscal, tax, currency, COA decisions.                         |
 | Accounts Receivable             | Defined                  | Not started           | Requires credit policy.                                                |
 | Accounts Payable                | Defined                  | Not started           | Requires invoice matching policy.                                      |

@@ -1,6 +1,7 @@
 # Current System State
 
-Status: Phase P3.10 CRM is approved, merged, and complete on `main`.
+Status: Phase P3.11 Service and Warranty is implemented on a feature branch and awaiting
+architecture review.
 
 ## Phase State
 
@@ -20,6 +21,7 @@ Status: Phase P3.10 CRM is approved, merged, and complete on `main`.
 - P3.9.1 Procurement to Finance Integration is approved, merged, and part of `main`.
 - P3.9 Import Logistics is approved, merged, and part of `main`.
 - P3.10 CRM is approved, merged, and part of `main`.
+- P3.11 Service and Warranty is implemented and awaiting review; it is not yet part of `main`.
 - Pricing, Accounts Receivable, Accounting, HR, Manufacturing, and other adjacent ERP modules have
   not started and must not begin until explicitly approved.
 
@@ -87,6 +89,8 @@ Status: Phase P3.10 CRM is approved, merged, and complete on `main`.
   landed-cost drafts under `apps/backend/src/main/java/com/newland/erp/logistics`.
 - CRM bounded context for leads, opportunities, activities, and customer timelines under
   `apps/backend/src/main/java/com/newland/erp/crm`.
+- Service and Warranty bounded context under
+  `apps/backend/src/main/java/com/newland/erp/servicewarranty`.
 
 ## Current Business Architecture Baseline
 
@@ -104,6 +108,11 @@ Status: Phase P3.10 CRM is approved, merged, and complete on `main`.
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.11 adds configurable warranty policies, service-ticket lifecycle control, validation against
+Sales-owned customer and delivered-order evidence, Product Catalog references, Inventory serial
+references, diagnosis, repair/replacement decisions, and documented closure. It does not issue
+inventory, post accounting, invoice service, schedule technicians, or implement a mobile workflow.
 
 P3.10 adds only the CRM engagement foundation: leads, qualification/disqualification, opportunity
 conversion and controlled stages, immutable activities, and company-scoped customer timelines. Sales

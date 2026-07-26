@@ -79,6 +79,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/procurement/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/productcatalog/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/sales/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/servicewarranty/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/finance/FinanceArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/crm/CrmArchitectureTest.java',
@@ -90,6 +91,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/test/java/com/newland/erp/procurement/ProcurementArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/productcatalog/ProductCatalogArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/sales/SalesArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/servicewarranty/ServiceWarrantyArchitectureTest.java',
   'apps/backend/src/main/resources/application.yml',
   'apps/backend/src/main/resources/application-dev.yml',
   'apps/backend/src/test/resources/application-test.yml',
@@ -111,6 +113,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V16__import_logistics.sql',
   'apps/backend/src/main/resources/db/migration/V17__logistics_reference_integrity.sql',
   'apps/backend/src/main/resources/db/migration/V18__crm_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V19__service_warranty_foundation.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -139,6 +142,8 @@ const approvedBackendJavaRoots = [
   'apps/backend/src/test/java/com/newland/erp/productcatalog/',
   'apps/backend/src/main/java/com/newland/erp/sales/',
   'apps/backend/src/test/java/com/newland/erp/sales/',
+  'apps/backend/src/main/java/com/newland/erp/servicewarranty/',
+  'apps/backend/src/test/java/com/newland/erp/servicewarranty/',
 ];
 const approvedBackendResourceRoots = ['apps/backend/src/test/resources/'];
 const approvedBoundedContextLayers = new Set(['api', 'application', 'domain', 'infrastructure']);
@@ -238,6 +243,13 @@ const approvedSalesTables = new Set([
   'sales_order_revision',
 ]);
 const approvedCrmTables = new Set(['crm_lead', 'crm_opportunity', 'crm_activity']);
+const approvedServiceWarrantyTables = new Set([
+  'service_warranty_policy',
+  'service_ticket',
+  'service_warranty_decision',
+  'service_diagnosis',
+  'service_resolution',
+]);
 const approvedFinanceTables = new Set([
   'finance_chart_of_accounts',
   'finance_account',
@@ -463,6 +475,7 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedInventoryTables.has(tableName) &&
       !approvedLogisticsTables.has(tableName) &&
       !approvedCrmTables.has(tableName) &&
+      !approvedServiceWarrantyTables.has(tableName) &&
       !approvedProcurementTables.has(tableName) &&
       !approvedSalesTables.has(tableName) &&
       !approvedFinanceTables.has(tableName) &&
@@ -522,7 +535,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved bounded-context boundaries through P3.10 are intact.',
+    'Architecture verification passed: approved bounded-context boundaries through P3.11 are intact.',
   );
 }
 

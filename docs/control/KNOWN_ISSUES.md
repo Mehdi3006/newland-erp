@@ -8,7 +8,6 @@
   documented.
 - Inventory valuation method is not selected.
 - Negative stock policy is not selected.
-- Warranty policy is not defined.
 - Approval amount limits are not defined.
 - Bank, payment gateway, check, and cashbox country rules are not defined.
 - Integration priorities are not defined.
@@ -31,3 +30,5 @@
 - P3.1 recommended scope identified.
 - P2 Business Architecture approved.
 - P3.1 Enterprise Structure foundation implemented for review in PR #11.
+- P3.11 introduces configurable company/product warranty policies; policy values remain
+  administrator-owned reference data rather than hardcoded rules.
