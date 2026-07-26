@@ -22,16 +22,6 @@ public final class JooqLogisticsRepository implements LogisticsRepository {
   }
 
   @Override
-  public boolean idempotencyKeyExists(final String key) {
-    return dsl.fetchExists(
-            DSL.table("logistics_shipment"),
-            DSL.field("idempotency_key", String.class).eq(key))
-        || dsl.fetchExists(
-            DSL.table("logistics_landed_cost_draft"),
-            DSL.field("idempotency_key", String.class).eq(key));
-  }
-
-  @Override
   public boolean shipmentNumberExists(final String number) {
     return dsl.fetchExists(
         DSL.table("logistics_shipment"),
@@ -46,8 +36,8 @@ public final class JooqLogisticsRepository implements LogisticsRepository {
   }
 
   @Override
-  public Shipment insertShipment(final Shipment shipment) {
-    dsl.insertInto(DSL.table("logistics_shipment"))
+  public boolean insertShipmentIfAbsent(final Shipment shipment) {
+    return dsl.insertInto(DSL.table("logistics_shipment"))
         .columns(
             field("id"), field("shipment_number"), field("idempotency_key"),
             field("purchase_order_id"), field("supplier_id"), field("company_id"),
@@ -62,8 +52,16 @@ public final class JooqLogisticsRepository implements LogisticsRepository {
             shipment.originPortCode(), shipment.destinationPortCode(), shipment.incotermCode(),
             shipment.estimatedDeparture(), shipment.estimatedArrival(), shipment.status().name(),
             shipment.version(), shipment.createdAt(), shipment.actor())
-        .execute();
-    return shipment;
+        .onConflict(DSL.field("idempotency_key"))
+        .doNothing()
+        .execute() == 1;
+  }
+
+  @Override
+  public Optional<Shipment> findShipmentByIdempotencyKey(final String idempotencyKey) {
+    return dsl.selectFrom(DSL.table("logistics_shipment"))
+        .where(DSL.field("idempotency_key", String.class).eq(idempotencyKey))
+        .fetchOptional(this::shipment);
   }
 
   @Override
@@ -99,15 +97,21 @@ public final class JooqLogisticsRepository implements LogisticsRepository {
   }
 
   @Override
-  public LandedCostDraft insertLandedCostDraft(final LandedCostDraft draft) {
-    dsl.insertInto(DSL.table("logistics_landed_cost_draft"))
+  public boolean insertLandedCostDraftIfAbsent(final LandedCostDraft draft) {
+    final int inserted =
+        dsl.insertInto(DSL.table("logistics_landed_cost_draft"))
         .columns(
             field("id"), field("shipment_id"), field("idempotency_key"), field("currency_code"),
             field("allocation_basis"), field("total_amount"), field("created_at"), field("actor"))
         .values(
             draft.id(), draft.shipmentId(), draft.idempotencyKey(), draft.currencyCode(),
             draft.allocationBasis().name(), draft.total(), draft.createdAt(), draft.actor())
-        .execute();
+            .onConflict(DSL.field("idempotency_key"))
+            .doNothing()
+            .execute();
+    if (inserted == 0) {
+      return false;
+    }
     for (final var component : draft.components()) {
       dsl.insertInto(DSL.table("logistics_landed_cost_component"))
           .columns(field("id"), field("draft_id"), field("cost_type"), field("amount"),
@@ -116,25 +120,22 @@ public final class JooqLogisticsRepository implements LogisticsRepository {
               component.reference())
           .execute();
     }
-    return draft;
+    return true;
   }
 
   @Override
   public Optional<LandedCostDraft> findLandedCostDraft(final UUID draftId) {
     return dsl.selectFrom(DSL.table("logistics_landed_cost_draft"))
         .where(DSL.field("id", UUID.class).eq(draftId))
-        .fetchOptional(
-            row ->
-                new LandedCostDraft(
-                    row.get("id", UUID.class),
-                    row.get("shipment_id", UUID.class),
-                    row.get("idempotency_key", String.class),
-                    row.get("currency_code", String.class),
-                    LandedCostDraft.AllocationBasis.valueOf(
-                        row.get("allocation_basis", String.class)),
-                    components(draftId),
-                    row.get("created_at", OffsetDateTime.class).toInstant(),
-                    row.get("actor", String.class)));
+        .fetchOptional(this::landedCostDraft);
+  }
+
+  @Override
+  public Optional<LandedCostDraft> findLandedCostDraftByIdempotencyKey(
+      final String idempotencyKey) {
+    return dsl.selectFrom(DSL.table("logistics_landed_cost_draft"))
+        .where(DSL.field("idempotency_key", String.class).eq(idempotencyKey))
+        .fetchOptional(row -> landedCostDraft(row));
   }
 
   private Shipment shipment(final Record row) {
@@ -158,6 +159,19 @@ public final class JooqLogisticsRepository implements LogisticsRepository {
         containers(id),
         milestones(id),
         row.get("version", Long.class),
+        row.get("created_at", OffsetDateTime.class).toInstant(),
+        row.get("actor", String.class));
+  }
+
+  private LandedCostDraft landedCostDraft(final Record row) {
+    final UUID draftId = row.get("id", UUID.class);
+    return new LandedCostDraft(
+        draftId,
+        row.get("shipment_id", UUID.class),
+        row.get("idempotency_key", String.class),
+        row.get("currency_code", String.class),
+        LandedCostDraft.AllocationBasis.valueOf(row.get("allocation_basis", String.class)),
+        components(draftId),
         row.get("created_at", OffsetDateTime.class).toInstant(),
         row.get("actor", String.class));
   }

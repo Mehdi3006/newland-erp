@@ -86,18 +86,58 @@ public record Shipment(
   }
 
   public Shipment recordMilestone(final CustomsMilestone milestone) {
+    if (status == Status.DELIVERED || status == Status.CANCELLED) {
+      throw new IllegalStateException("Terminal shipments cannot accept customs milestones.");
+    }
+    if (status != Status.IN_TRANSIT
+        && status != Status.CUSTOMS_HOLD
+        && status != Status.CUSTOMS_RELEASED) {
+      throw new IllegalStateException("Customs milestones require an in-transit shipment.");
+    }
     if (milestones.stream().anyMatch(existing -> existing.reference().equals(milestone.reference()))) {
       throw new IllegalStateException("Customs milestone reference must be unique.");
     }
+    validateMilestoneTransition(milestone);
     final var next = new java.util.ArrayList<>(milestones);
     next.add(milestone);
     final Status nextStatus =
         switch (milestone.type()) {
           case CUSTOMS_HOLD -> Status.CUSTOMS_HOLD;
           case CUSTOMS_RELEASED -> Status.CUSTOMS_RELEASED;
+          case INLAND_DELIVERY -> Status.DELIVERED;
           default -> status;
         };
     return copy(nextStatus, containers, next);
+  }
+
+  private void validateMilestoneTransition(final CustomsMilestone milestone) {
+    final MilestoneType previous =
+        milestones.isEmpty() ? null : milestones.getLast().type();
+    final boolean allowed =
+        switch (milestone.type()) {
+          case DEPARTED -> previous == null && status == Status.IN_TRANSIT;
+          case ARRIVED_PORT -> previous == MilestoneType.DEPARTED;
+          case CUSTOMS_FILED -> previous == MilestoneType.ARRIVED_PORT;
+          case CUSTOMS_HOLD -> previous == MilestoneType.CUSTOMS_FILED;
+          case CUSTOMS_RELEASED ->
+              previous == MilestoneType.CUSTOMS_FILED
+                  || previous == MilestoneType.CUSTOMS_HOLD;
+          case INLAND_DELIVERY ->
+              previous == MilestoneType.CUSTOMS_RELEASED
+                  && status == Status.CUSTOMS_RELEASED;
+        };
+    if (!allowed) {
+      throw new IllegalStateException(
+          "Invalid customs milestone transition from "
+              + (previous == null ? status : previous)
+              + " to "
+              + milestone.type()
+              + ".");
+    }
+    if (previous != null
+        && milestone.occurredAt().isBefore(milestones.getLast().occurredAt())) {
+      throw new IllegalStateException("Customs milestone time cannot move backwards.");
+    }
   }
 
   private Shipment copy(

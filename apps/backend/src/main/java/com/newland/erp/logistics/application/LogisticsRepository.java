@@ -7,13 +7,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface LogisticsRepository {
-  boolean idempotencyKeyExists(String idempotencyKey);
-
   boolean shipmentNumberExists(String shipmentNumber);
 
   boolean containerNumberExists(String containerNumber);
 
-  Shipment insertShipment(Shipment shipment);
+  boolean insertShipmentIfAbsent(Shipment shipment);
+
+  Optional<Shipment> findShipmentByIdempotencyKey(String idempotencyKey);
 
   Shipment updateShipment(Shipment shipment);
 
@@ -21,7 +21,9 @@ public interface LogisticsRepository {
 
   List<Shipment> listShipments(UUID companyId);
 
-  LandedCostDraft insertLandedCostDraft(LandedCostDraft draft);
+  boolean insertLandedCostDraftIfAbsent(LandedCostDraft draft);
 
   Optional<LandedCostDraft> findLandedCostDraft(UUID draftId);
+
+  Optional<LandedCostDraft> findLandedCostDraftByIdempotencyKey(String idempotencyKey);
 }

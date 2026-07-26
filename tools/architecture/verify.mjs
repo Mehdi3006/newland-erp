@@ -107,6 +107,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V14__procurement_finance_integration.sql',
   'apps/backend/src/main/resources/db/migration/V15__procurement_accounting_outbox.sql',
   'apps/backend/src/main/resources/db/migration/V16__import_logistics.sql',
+  'apps/backend/src/main/resources/db/migration/V17__logistics_reference_integrity.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -210,11 +211,13 @@ const approvedProcurementTables = new Set([
   'procurement_accounting_publication',
 ]);
 const approvedLogisticsTables = new Set([
+  'logistics_carrier',
   'logistics_shipment',
   'logistics_container',
   'logistics_customs_milestone',
   'logistics_landed_cost_draft',
   'logistics_landed_cost_component',
+  'logistics_port',
 ]);
 const approvedSalesTables = new Set([
   'sales_customer',

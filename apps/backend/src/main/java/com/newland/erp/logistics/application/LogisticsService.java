@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public final class LogisticsService {
   private final LogisticsRepository repository;
   private final ProcurementReferencePort procurement;
+  private final LogisticsMasterReferencePort references;
   private final PlatformAuditOutboxPort platform;
   private final LogisticsSecurityPort security;
   private final Clock clock;
@@ -24,11 +25,13 @@ public final class LogisticsService {
   public LogisticsService(
       final LogisticsRepository logisticsRepository,
       final ProcurementReferencePort procurementPort,
+      final LogisticsMasterReferencePort masterReferencePort,
       final PlatformAuditOutboxPort platformPort,
       final LogisticsSecurityPort securityPort,
       final Clock systemClock) {
     repository = logisticsRepository;
     procurement = procurementPort;
+    references = masterReferencePort;
     platform = platformPort;
     security = securityPort;
     clock = systemClock;
@@ -37,14 +40,22 @@ public final class LogisticsService {
   @Transactional
   public Shipment createShipment(final CreateShipment command) {
     security.require(command.actor(), "logistics.shipment.manage", command.companyId());
-    if (repository.idempotencyKeyExists(command.idempotencyKey())
-        || repository.shipmentNumberExists(command.shipmentNumber())) {
-      throw new IllegalStateException("Duplicate logistics idempotency key or shipment number.");
+    final var existing =
+        repository.findShipmentByIdempotencyKey(command.idempotencyKey());
+    if (existing.isPresent()) {
+      return requireMatchingShipment(command, existing.get());
+    }
+    if (repository.shipmentNumberExists(command.shipmentNumber())) {
+      throw new IllegalStateException("Shipment number already exists.");
     }
     final var order = procurement.requireApprovedPurchaseOrder(command.purchaseOrderId());
     if (!order.companyId().equals(command.companyId())) {
       throw new IllegalArgumentException("Purchase order is outside shipment company scope.");
     }
+    references.requireActiveCarrier(command.carrierCode());
+    references.requireActivePort(command.originPortCode());
+    references.requireActivePort(command.destinationPortCode());
+    references.requireActiveIncoterm(command.incotermCode());
     final Shipment shipment =
         new Shipment(
             UUID.randomUUID(),
@@ -67,7 +78,13 @@ public final class LogisticsService {
             0,
             Instant.now(clock),
             command.actor());
-    repository.insertShipment(shipment);
+    if (!repository.insertShipmentIfAbsent(shipment)) {
+      return requireMatchingShipment(
+          command,
+          repository
+              .findShipmentByIdempotencyKey(command.idempotencyKey())
+              .orElseThrow(() -> new IllegalStateException("Shipment creation conflicted.")));
+    }
     audit(command.actor(), "LOGISTICS_SHIPMENT_CREATED", shipment.id());
     return shipment;
   }
@@ -127,10 +144,19 @@ public final class LogisticsService {
   public LandedCostDraft createLandedCostDraft(final LandedCostDraft draft) {
     final Shipment shipment = shipment(draft.shipmentId());
     security.require(draft.actor(), "logistics.landed-cost.manage", shipment.companyId());
-    if (repository.idempotencyKeyExists(draft.idempotencyKey())) {
-      throw new IllegalStateException("Duplicate logistics idempotency key.");
+    final var existing =
+        repository.findLandedCostDraftByIdempotencyKey(draft.idempotencyKey());
+    if (existing.isPresent()) {
+      return requireMatchingLandedCost(draft, existing.get());
     }
-    final LandedCostDraft saved = repository.insertLandedCostDraft(draft);
+    if (!repository.insertLandedCostDraftIfAbsent(draft)) {
+      return requireMatchingLandedCost(
+          draft,
+          repository
+              .findLandedCostDraftByIdempotencyKey(draft.idempotencyKey())
+              .orElseThrow(() -> new IllegalStateException("Landed-cost creation conflicted.")));
+    }
+    final LandedCostDraft saved = draft;
     audit(draft.actor(), "LOGISTICS_LANDED_COST_DRAFT_CREATED", draft.id());
     return saved;
   }
@@ -150,6 +176,53 @@ public final class LogisticsService {
 
   private void audit(final String actor, final String action, final UUID targetId) {
     platform.recordAudit(actor, action, "ImportLogistics", targetId, Map.of());
+  }
+
+  private static Shipment requireMatchingShipment(
+      final CreateShipment command, final Shipment persisted) {
+    if (!persisted.shipmentNumber().equalsIgnoreCase(command.shipmentNumber())
+        || !persisted.purchaseOrderId().equals(command.purchaseOrderId())
+        || !persisted.companyId().equals(command.companyId())
+        || !persisted.carrierCode().equalsIgnoreCase(command.carrierCode())
+        || !persisted.originPortCode().equalsIgnoreCase(command.originPortCode())
+        || !persisted.destinationPortCode().equalsIgnoreCase(command.destinationPortCode())
+        || !persisted.incotermCode().equalsIgnoreCase(command.incotermCode())
+        || !persisted.estimatedDeparture().equals(command.estimatedDeparture())
+        || !persisted.estimatedArrival().equals(command.estimatedArrival())) {
+      throw new IllegalArgumentException(
+          "Idempotency key was reused with conflicting shipment data.");
+    }
+    return persisted;
+  }
+
+  private static LandedCostDraft requireMatchingLandedCost(
+      final LandedCostDraft candidate, final LandedCostDraft persisted) {
+    if (!persisted.shipmentId().equals(candidate.shipmentId())
+        || !persisted.currencyCode().equals(candidate.currencyCode())
+        || persisted.allocationBasis() != candidate.allocationBasis()
+        || !sameComponents(persisted.components(), candidate.components())) {
+      throw new IllegalArgumentException(
+          "Idempotency key was reused with conflicting landed-cost data.");
+    }
+    return persisted;
+  }
+
+  private static boolean sameComponents(
+      final List<LandedCostDraft.CostComponent> persisted,
+      final List<LandedCostDraft.CostComponent> candidate) {
+    if (persisted.size() != candidate.size()) {
+      return false;
+    }
+    for (int index = 0; index < persisted.size(); index++) {
+      final var left = persisted.get(index);
+      final var right = candidate.get(index);
+      if (!left.costType().equals(right.costType())
+          || !left.reference().equals(right.reference())
+          || left.amount().compareTo(right.amount()) != 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public record CreateShipment(

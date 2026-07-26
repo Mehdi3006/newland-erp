@@ -30,12 +30,24 @@ final class LogisticsMigrationTest {
         var tables =
             statement.executeQuery(
                 """
-                select count(*) as count
+                select table_name
                 from information_schema.tables
                 where table_schema = 'public' and table_name like 'logistics_%'
+                order by table_name
                 """)) {
-      tables.next();
-      assertThat(tables.getInt("count")).isEqualTo(5);
+      final var names = new java.util.ArrayList<String>();
+      while (tables.next()) {
+        names.add(tables.getString("table_name"));
+      }
+      assertThat(names)
+          .containsExactly(
+              "logistics_carrier",
+              "logistics_container",
+              "logistics_customs_milestone",
+              "logistics_landed_cost_component",
+              "logistics_landed_cost_draft",
+              "logistics_port",
+              "logistics_shipment");
     }
   }
 }
