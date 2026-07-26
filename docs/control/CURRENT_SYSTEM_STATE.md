@@ -1,6 +1,6 @@
 # Current System State
 
-Status: Phase P3.9 Import Logistics is approved, merged, and complete on `main`.
+Status: Phase P3.10 CRM is implemented on a feature branch and awaiting architecture review.
 
 ## Phase State
 
@@ -19,8 +19,9 @@ Status: Phase P3.9 Import Logistics is approved, merged, and complete on `main`.
   module is connected to automatic posting.
 - P3.9.1 Procurement to Finance Integration is approved, merged, and part of `main`.
 - P3.9 Import Logistics is approved, merged, and part of `main`.
-- Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
-  have not started and must not begin until explicitly approved.
+- P3.10 CRM is implemented and awaiting review; it is not yet part of `main`.
+- Pricing, Accounts Receivable, Accounting, HR, Manufacturing, and other adjacent ERP modules have
+  not started and must not begin until explicitly approved.
 
 ## Current Repository Content
 
@@ -84,6 +85,8 @@ Status: Phase P3.9 Import Logistics is approved, merged, and complete on `main`.
   `V14__procurement_finance_integration.sql`.
 - Import Logistics bounded context for approved-PO shipments, containers, customs milestones, and
   landed-cost drafts under `apps/backend/src/main/java/com/newland/erp/logistics`.
+- CRM bounded context for leads, opportunities, activities, and customer timelines under
+  `apps/backend/src/main/java/com/newland/erp/crm`.
 
 ## Current Business Architecture Baseline
 
@@ -101,6 +104,12 @@ Status: Phase P3.9 Import Logistics is approved, merged, and complete on `main`.
 - Open decisions centralized.
 
 ## Implementation State
+
+P3.10 adds only the CRM engagement foundation: leads, qualification/disqualification, opportunity
+conversion and controlled stages, immutable activities, and company-scoped customer timelines. Sales
+remains the customer master owner and exposes customer references through a published port. CRM adds
+no campaigns, marketing automation, quotation/order execution, pricing, invoicing, or service
+functionality.
 
 P3.9.1 connects only five Procurement accounting facts to the Finance Posting Engine:
 PurchaseOrderApproved (feature flagged), GoodsReceived, SupplierInvoicePosted,

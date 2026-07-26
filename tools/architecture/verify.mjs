@@ -68,6 +68,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/build.gradle.kts',
   'apps/backend/gradle.lockfile',
   'apps/backend/src/main/java/com/newland/erp/NewlandErpApplication.java',
+  'apps/backend/src/main/java/com/newland/erp/crm/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/enterprise/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/finance/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/identity/package-info.java',
@@ -80,6 +81,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/sales/package-info.java',
   'apps/backend/src/test/java/com/newland/erp/enterprise/EnterpriseStructureArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/finance/FinanceArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/crm/CrmArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/inventory/InventoryArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/logistics/LogisticsArchitectureTest.java',
@@ -108,12 +110,15 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V15__procurement_accounting_outbox.sql',
   'apps/backend/src/main/resources/db/migration/V16__import_logistics.sql',
   'apps/backend/src/main/resources/db/migration/V17__logistics_reference_integrity.sql',
+  'apps/backend/src/main/resources/db/migration/V18__crm_foundation.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
   'apps/web/identity-access/index.html',
 ]);
 const approvedBackendJavaRoots = [
+  'apps/backend/src/main/java/com/newland/erp/crm/',
+  'apps/backend/src/test/java/com/newland/erp/crm/',
   'apps/backend/src/main/java/com/newland/erp/enterprise/',
   'apps/backend/src/test/java/com/newland/erp/enterprise/',
   'apps/backend/src/main/java/com/newland/erp/finance/',
@@ -232,6 +237,7 @@ const approvedSalesTables = new Set([
   'sales_order_line',
   'sales_order_revision',
 ]);
+const approvedCrmTables = new Set(['crm_lead', 'crm_opportunity', 'crm_activity']);
 const approvedFinanceTables = new Set([
   'finance_chart_of_accounts',
   'finance_account',
@@ -456,6 +462,7 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedProductCatalogTables.has(tableName) &&
       !approvedInventoryTables.has(tableName) &&
       !approvedLogisticsTables.has(tableName) &&
+      !approvedCrmTables.has(tableName) &&
       !approvedProcurementTables.has(tableName) &&
       !approvedSalesTables.has(tableName) &&
       !approvedFinanceTables.has(tableName) &&
@@ -515,7 +522,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved P3.1/P3.2/P3.2.5/P3.3/P3.3.5/P3.4/P3.5/P3.6 bounded-context boundaries are intact.',
+    'Architecture verification passed: approved bounded-context boundaries through P3.10 are intact.',
   );
 }
 

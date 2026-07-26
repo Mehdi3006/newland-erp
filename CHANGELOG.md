@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.10 CRM foundation for company-scoped leads, controlled qualification and conversion,
+  opportunities with auditable stage transitions, immutable customer activities, customer timelines,
+  published Sales customer references, audit, and transactional outbox events.
+
 - Completed Phase P3.9 Import Logistics foundation for approved-PO shipment creation, booking,
   container loading, lifecycle-safe customs milestones, validated logistics references, and
   auditable landed-cost drafts without Inventory mutation or accounting posting.
