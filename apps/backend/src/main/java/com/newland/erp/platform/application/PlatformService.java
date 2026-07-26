@@ -14,6 +14,7 @@ import com.newland.erp.platform.domain.PlatformDomainEvent;
 import com.newland.erp.platform.domain.PlatformNotFoundException;
 import com.newland.erp.platform.domain.StoredFile;
 import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
+import com.newland.erp.platform.application.integration.PlatformFeatureFlagPort;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-public final class PlatformService implements PlatformAuditOutboxPort {
+public final class PlatformService implements PlatformAuditOutboxPort, PlatformFeatureFlagPort {
     private final PlatformRepository repository;
     private final DomainEventBus eventBus;
     private final FileStoragePort fileStorage;
@@ -146,6 +147,12 @@ public final class PlatformService implements PlatformAuditOutboxPort {
     @Transactional(readOnly = true)
     public Map<String, Boolean> featureFlag(final String key) {
         return Map.of(key, repository.findFeatureFlag(key).map(FeatureFlag::enabled).orElse(false));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isEnabled(final String key) {
+        return repository.findFeatureFlag(key).map(FeatureFlag::enabled).orElse(false);
     }
 
     @Transactional(readOnly = true)

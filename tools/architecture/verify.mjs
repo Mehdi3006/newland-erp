@@ -102,6 +102,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V11__finance_posting_integrity.sql',
   'apps/backend/src/main/resources/db/migration/V12__finance_posting_release_guards.sql',
   'apps/backend/src/main/resources/db/migration/V13__release_blocker_guards.sql',
+  'apps/backend/src/main/resources/db/migration/V14__procurement_finance_integration.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
