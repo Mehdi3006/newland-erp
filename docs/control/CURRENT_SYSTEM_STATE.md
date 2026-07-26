@@ -1,7 +1,6 @@
 # Current System State
 
-Status: Phase P3.8 Financial Posting Infrastructure is implemented on PR #20 and is awaiting its
-release gate.
+Status: Phase P3.8 Financial Posting Infrastructure is approved, merged, and part of `main`.
 
 ## Phase State
 
@@ -16,8 +15,8 @@ release gate.
 - P3.5 Procurement Foundation is approved, merged, and part of `main`.
 - P3.6 Sales Foundation is approved, merged, and part of `main`.
 - P3.7 Finance Foundation is approved, merged, and part of `main`.
-- P3.8 Financial Posting Infrastructure is implemented on PR #20 and is awaiting its release gate;
-  no operational module is connected to automatic posting.
+- P3.8 Financial Posting Infrastructure is approved, merged, and part of `main`; no operational
+  module is connected to automatic posting.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
@@ -74,7 +73,8 @@ release gate.
   `apps/backend/src/main/java/com/newland/erp/finance/posting`.
 - Financial Posting Infrastructure Flyway migrations under
   `apps/backend/src/main/resources/db/migration/V10__finance_posting_infrastructure.sql`,
-  `V11__finance_posting_integrity.sql`, and `V12__finance_posting_release_guards.sql`.
+  `V11__finance_posting_integrity.sql`, `V12__finance_posting_release_guards.sql`, and
+  `V13__release_blocker_guards.sql`.
 - Financial Posting Infrastructure unit, PostgreSQL integration, concurrency, rollback, security,
   audit, outbox, and architecture tests under `apps/backend/src/test`.
 
