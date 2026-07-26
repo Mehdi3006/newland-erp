@@ -35,13 +35,18 @@ final class SalesDomainTest {
         final SalesOrder approved = order().approve();
         final UUID lineId = approved.lines().getFirst().id();
         final SalesOrder reserved = approved.reserve(lineId, qty("2"));
-        final SalesOrder delivered = reserved.deliver(lineId, qty("3"));
-        final SalesOrder cancelled = delivered.cancel();
+        final SalesOrder delivered = reserved.deliver(
+                lineId, qty("3"), Instant.parse("2026-01-03T00:00:00Z"));
+        final SalesOrder deliveredAgain = delivered.deliver(
+                lineId, qty("1"), Instant.parse("2026-01-04T00:00:00Z"));
+        final SalesOrder cancelled = deliveredAgain.cancel();
 
         assertThat(cancelled.lines().getFirst().reservedQuantity().value()).isEqualByComparingTo("2");
-        assertThat(cancelled.lines().getFirst().deliveredQuantity().value()).isEqualByComparingTo("3");
-        assertThat(cancelled.lines().getFirst().cancelledQuantity().value()).isEqualByComparingTo("5");
+        assertThat(cancelled.lines().getFirst().deliveredQuantity().value()).isEqualByComparingTo("4");
+        assertThat(cancelled.lines().getFirst().cancelledQuantity().value()).isEqualByComparingTo("4");
         assertThat(cancelled.lines().getFirst().remainingQuantity().value()).isEqualByComparingTo("0");
+        assertThat(cancelled.lines().getFirst().deliveredAt())
+                .isEqualTo(Instant.parse("2026-01-03T00:00:00Z"));
     }
 
     @Test
@@ -104,7 +109,7 @@ final class SalesDomainTest {
     static SalesOrder.SalesOrderLine orderLine(final String quantity) {
         final SalesQuantity zero = qty("0");
         return new SalesOrder.SalesOrderLine(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "SKU-1",
-                qty(quantity), zero, zero, zero, UUID.randomUUID());
+                qty(quantity), zero, zero, zero, UUID.randomUUID(), null);
     }
 
     static SalesQuantity qty(final String value) {

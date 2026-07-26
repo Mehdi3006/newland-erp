@@ -39,7 +39,7 @@ public final class SalesDtos {
         SalesOrder.SalesOrderLine toDomain() {
             final SalesQuantity zero = new SalesQuantity(BigDecimal.ZERO, orderedQuantity.uomCode());
             return new SalesOrder.SalesOrderLine(UUID.randomUUID(), productId, skuId, skuCode,
-                    orderedQuantity.toDomain(), zero, zero, zero, taxCategoryId);
+                    orderedQuantity.toDomain(), zero, zero, zero, taxCategoryId, null);
         }
     }
 

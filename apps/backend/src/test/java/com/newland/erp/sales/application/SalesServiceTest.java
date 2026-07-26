@@ -203,7 +203,7 @@ final class SalesServiceTest {
     private static SalesOrder.SalesOrderLine orderLine(final String quantity) {
         final SalesQuantity zero = qty("0");
         return new SalesOrder.SalesOrderLine(UUID.randomUUID(), ids(), ids(), "SKU-1", qty(quantity), zero, zero,
-                zero, ids());
+                zero, ids(), null);
     }
 
     private static SalesQuantity qty(final String value) {
