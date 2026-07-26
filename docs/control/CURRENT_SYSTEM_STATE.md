@@ -1,7 +1,7 @@
 # Current System State
 
-Status: Phase P3.9.1 Procurement to Finance Integration is implemented on a feature branch and
-awaiting architecture review.
+Status: Phase P3.9 Import Logistics is implemented on a feature branch and awaiting architecture
+review.
 
 ## Phase State
 
@@ -18,8 +18,8 @@ awaiting architecture review.
 - P3.7 Finance Foundation is approved, merged, and part of `main`.
 - P3.8 Financial Posting Infrastructure is approved, merged, and part of `main`; no operational
   module is connected to automatic posting.
-- P3.9.1 Procurement to Finance Integration is implemented and awaiting review; it is not yet part
-  of `main`.
+- P3.9.1 Procurement to Finance Integration is approved, merged, and part of `main`.
+- P3.9 Import Logistics is implemented and awaiting review; it is not yet part of `main`.
 - Pricing, Accounts Receivable, Accounting, CRM, HR, Manufacturing, and other adjacent ERP modules
   have not started and must not begin until explicitly approved.
 
@@ -83,6 +83,8 @@ awaiting architecture review.
 - Procurement to Finance integration through the Finance published posting API, with company-scoped
   authorization, audit/outbox reuse, a purchase-order feature flag, and forward-only migration
   `V14__procurement_finance_integration.sql`.
+- Import Logistics bounded context for approved-PO shipments, containers, customs milestones, and
+  landed-cost drafts under `apps/backend/src/main/java/com/newland/erp/logistics`.
 
 ## Current Business Architecture Baseline
 
@@ -106,6 +108,10 @@ PurchaseOrderApproved (feature flagged), GoodsReceived, SupplierInvoicePosted,
 SupplierCreditNotePosted, and SupplierPaymentPosted. Procurement contains no accounting rules,
 creates no journal directly, and does not access Finance persistence. Inventory, Sales,
 Manufacturing, and Assets are unchanged.
+
+P3.9 adds import shipment booking, container loading, customs tracking, and landed-cost drafts. It
+does not receive inventory, post landed cost, call external carriers/customs services, or add
+accounting rules.
 
 P3.8 adds only explicit financial-posting infrastructure: immutable accounting events, versioned
 posting rules, durable and idempotent posting requests, real Finance journal creation/posting,

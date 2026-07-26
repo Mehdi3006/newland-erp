@@ -72,6 +72,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/java/com/newland/erp/finance/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/identity/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/inventory/package-info.java',
+  'apps/backend/src/main/java/com/newland/erp/logistics/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/masterdata/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/platform/package-info.java',
   'apps/backend/src/main/java/com/newland/erp/procurement/package-info.java',
@@ -81,6 +82,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/test/java/com/newland/erp/finance/FinanceArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/identity/IdentityArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/inventory/InventoryArchitectureTest.java',
+  'apps/backend/src/test/java/com/newland/erp/logistics/LogisticsArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/masterdata/MasterDataArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/platform/PlatformArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/procurement/ProcurementArchitectureTest.java',
@@ -104,6 +106,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V13__release_blocker_guards.sql',
   'apps/backend/src/main/resources/db/migration/V14__procurement_finance_integration.sql',
   'apps/backend/src/main/resources/db/migration/V15__procurement_accounting_outbox.sql',
+  'apps/backend/src/main/resources/db/migration/V16__import_logistics.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -118,6 +121,8 @@ const approvedBackendJavaRoots = [
   'apps/backend/src/test/java/com/newland/erp/identity/',
   'apps/backend/src/main/java/com/newland/erp/inventory/',
   'apps/backend/src/test/java/com/newland/erp/inventory/',
+  'apps/backend/src/main/java/com/newland/erp/logistics/',
+  'apps/backend/src/test/java/com/newland/erp/logistics/',
   'apps/backend/src/main/java/com/newland/erp/masterdata/',
   'apps/backend/src/test/java/com/newland/erp/masterdata/',
   'apps/backend/src/main/java/com/newland/erp/platform/',
@@ -203,6 +208,13 @@ const approvedProcurementTables = new Set([
   'procurement_purchase_order_line',
   'procurement_purchase_order_revision',
   'procurement_accounting_publication',
+]);
+const approvedLogisticsTables = new Set([
+  'logistics_shipment',
+  'logistics_container',
+  'logistics_customs_milestone',
+  'logistics_landed_cost_draft',
+  'logistics_landed_cost_component',
 ]);
 const approvedSalesTables = new Set([
   'sales_customer',
@@ -440,6 +452,7 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedMasterDataTables.has(tableName) &&
       !approvedProductCatalogTables.has(tableName) &&
       !approvedInventoryTables.has(tableName) &&
+      !approvedLogisticsTables.has(tableName) &&
       !approvedProcurementTables.has(tableName) &&
       !approvedSalesTables.has(tableName) &&
       !approvedFinanceTables.has(tableName) &&

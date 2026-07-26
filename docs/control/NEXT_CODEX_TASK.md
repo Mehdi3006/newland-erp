@@ -1,25 +1,18 @@
 # Next Codex Task
 
-## Recommended Task: Review P3.9.1 Procurement to Finance Integration
+## Recommended Task: Review P3.9 Import Logistics
 
-P3.9.1 is implemented on a feature branch and must pass architecture review before merge. Review the
-Procurement accounting-event contract, published Finance API boundary, company authorization,
-idempotency/retry behavior, audit/outbox integration, and PostgreSQL migration.
+P3.9 is implemented on a feature branch and must pass architecture review before merge.
 
-Do not begin Inventory, Sales, Manufacturing, Assets, or another integration phase.
+Review shipment and container lifecycle invariants, approved Purchase Order references, company
+authorization, customs milestone auditability, landed-cost draft persistence, published events,
+Flyway constraints, and PostgreSQL integration coverage.
 
-## P3.9.1 Review Scope
+Do not begin P3.9.5 or another bounded context until P3.9 is approved.
 
-- Five Procurement events only: purchase-order approval behind a disabled-by-default feature flag,
-  goods receipt, supplier invoice, supplier credit note, and supplier payment.
-- Procurement publishes immutable facts through Finance's named posting integration API.
-- Finance retains posting-rule evaluation, journal creation, idempotency, retry, and concurrency
-  ownership.
-- Identity company scope and Platform audit/outbox capabilities are reused through ports.
+## P3.9 Boundaries
 
-## P3.9.1 Release Boundaries
-
-- Do not introduce accounting rules or direct journal access in Procurement.
-- Do not implement Inventory, Sales, Manufacturing, Assets, or unrelated operational behavior.
-- Keep Finance persistence and internal application/domain types inaccessible to Procurement.
-- Do not begin another phase without explicit architectural approval.
+- No Inventory receipt or stock mutation.
+- No landed-cost accounting posting or valuation.
+- No carrier or customs provider integration.
+- No Procurement persistence access; only its published reference API is used.
