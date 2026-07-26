@@ -46,7 +46,6 @@ public final class PlatformService implements PlatformAuditOutboxPort {
     public OutboxMessage publishEvent(final PlatformCommands.PublishEvent command) {
         final PlatformDomainEvent event = new PlatformDomainEvent(UUID.randomUUID(), command.sourceContext(),
                 command.eventType(), command.aggregateId(), now(), command.payload());
-        eventBus.publish(event);
         return repository.insertOutboxMessage(OutboxMessage.pending(event, now()));
     }
 

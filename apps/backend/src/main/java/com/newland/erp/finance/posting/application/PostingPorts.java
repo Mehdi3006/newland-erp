@@ -65,7 +65,7 @@ public final class PostingPorts {
   }
 
   public interface ExchangeRateValidationPort {
-    void requireRate(String currencyCode, BigDecimal rate, LocalDate date);
+    BigDecimal requireRate(UUID companyId, String currencyCode, BigDecimal rate, LocalDate date);
   }
 
   public interface AccountingPeriodPort {

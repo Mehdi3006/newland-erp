@@ -6,4 +6,6 @@ public interface EnterpriseReferencePort {
   boolean isActiveCompany(UUID companyId);
 
   boolean isActiveBranch(UUID companyId, UUID branchId);
+
+  java.util.Optional<String> companyBaseCurrency(UUID companyId);
 }

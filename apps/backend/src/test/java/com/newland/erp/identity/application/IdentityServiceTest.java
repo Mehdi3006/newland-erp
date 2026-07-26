@@ -125,6 +125,27 @@ final class IdentityServiceTest {
                 .isInstanceOf(com.newland.erp.identity.domain.AuthenticationFailedException.class);
     }
 
+    @Test
+    void authorizationRejectsRevokedSessionAndDisabledUserImmediately() {
+        final FakeIdentityRepository repository = new FakeIdentityRepository();
+        final IdentityService service = service(repository);
+        final User user = service.createUser(new IdentityCommands.CreateUser(new Username("session-owner"),
+                new EmailAddress("session-owner@example.com"), "Session Owner", "StrongPass123"), "tester");
+        final AuthTokens tokens = service.login(new IdentityCommands.Login(user.username(), "StrongPass123",
+                "browser", false));
+
+        assertThat(service.isSessionAuthorized(user.id(), tokens.sessionId())).isTrue();
+        service.revokeSession(tokens.sessionId(), "tester");
+        assertThat(service.isSessionAuthorized(user.id(), tokens.sessionId())).isFalse();
+
+        final AuthTokens next = service.login(new IdentityCommands.Login(user.username(), "StrongPass123",
+                "browser", false));
+        repository.updateUser(new User(user.id(), user.username(), user.email(), user.displayName(),
+                UserStatus.DISABLED, user.failedLoginAttempts(), user.lockedUntil(), user.passwordExpiresAt(),
+                user.createdAt(), user.updatedAt()));
+        assertThat(service.isSessionAuthorized(user.id(), next.sessionId())).isFalse();
+    }
+
     private static IdentityService service(final FakeIdentityRepository repository) {
         return new IdentityService(repository, new PlainTestHasher(), new FakeTokenService(),
                 event -> {

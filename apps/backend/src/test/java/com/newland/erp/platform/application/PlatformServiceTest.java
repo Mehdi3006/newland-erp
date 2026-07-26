@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 final class PlatformServiceTest {
     @Test
-    void publishesEventThroughBusAndPersistsOutboxMessage() {
+    void persistsOutboxWithoutPublishingBeforeDispatch() {
         final InMemoryPlatformRepository repository = new InMemoryPlatformRepository();
         final AtomicInteger published = new AtomicInteger();
         final PlatformService service = new PlatformService(repository, event -> published.incrementAndGet(),
@@ -28,7 +28,7 @@ final class PlatformServiceTest {
         final var message = service.publishEvent(new PlatformCommands.PublishEvent("identity", "UserCreated",
                 UUID.randomUUID(), Map.of("username", "owner")));
 
-        assertThat(published).hasValue(1);
+        assertThat(published).hasValue(0);
         assertThat(message.status()).isEqualTo(OutboxStatus.PENDING);
         assertThat(repository.listPendingOutboxMessages(10)).containsExactly(message);
     }

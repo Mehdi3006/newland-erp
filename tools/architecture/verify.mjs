@@ -87,6 +87,8 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/test/java/com/newland/erp/productcatalog/ProductCatalogArchitectureTest.java',
   'apps/backend/src/test/java/com/newland/erp/sales/SalesArchitectureTest.java',
   'apps/backend/src/main/resources/application.yml',
+  'apps/backend/src/main/resources/application-dev.yml',
+  'apps/backend/src/test/resources/application-test.yml',
   'apps/backend/src/main/resources/db/migration/V1__enterprise_structure_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V2__identity_access_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V3__platform_foundation.sql',
@@ -99,6 +101,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V10__finance_posting_infrastructure.sql',
   'apps/backend/src/main/resources/db/migration/V11__finance_posting_integrity.sql',
   'apps/backend/src/main/resources/db/migration/V12__finance_posting_release_guards.sql',
+  'apps/backend/src/main/resources/db/migration/V13__release_blocker_guards.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',

@@ -400,7 +400,8 @@ public final class PostingService implements FinancialPostingPort {
     companies.requireCompany(event.companyId());
     branches.requireBranch(event.companyId(), event.branchId());
     currencies.requireCurrency(event.currencyCode());
-    rates.requireRate(event.currencyCode(), event.exchangeRate(), event.accountingDate());
+    rates.requireRate(event.companyId(), event.currencyCode(), event.exchangeRate(),
+        event.accountingDate());
     periods.requireOpenPeriod(event.companyId(), event.accountingDate());
     dimensions.requireDimensions(event.companyId(), event.dimensions());
   }

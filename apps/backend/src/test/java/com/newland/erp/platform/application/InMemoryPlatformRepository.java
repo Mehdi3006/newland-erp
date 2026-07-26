@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
 
 final class InMemoryPlatformRepository implements PlatformRepository {
     private final List<OutboxMessage> outbox = new ArrayList<>();
@@ -30,7 +31,53 @@ final class InMemoryPlatformRepository implements PlatformRepository {
 
     @Override
     public List<OutboxMessage> listPendingOutboxMessages(final int limit) {
-        return outbox.stream().filter(message -> message.status() == OutboxStatus.PENDING).limit(limit).toList();
+        return outbox.stream().filter(message -> message.status() == OutboxStatus.PENDING
+                || message.status() == OutboxStatus.FAILED).limit(limit).toList();
+    }
+
+    @Override
+    public List<OutboxMessage> claimOutboxMessages(final int limit, final Instant now,
+                                                   final Instant leaseExpiresAt) {
+        final List<OutboxMessage> claimed = new ArrayList<>();
+        for (int index = 0; index < outbox.size() && claimed.size() < limit; index++) {
+            final OutboxMessage message = outbox.get(index);
+            if ((message.status() == OutboxStatus.PENDING
+                    || message.status() == OutboxStatus.FAILED
+                    || message.status() == OutboxStatus.PROCESSING)
+                    && !message.nextAttemptAt().isAfter(now)) {
+                final OutboxMessage claim = new OutboxMessage(message.id(), message.event(),
+                        OutboxStatus.PROCESSING, message.attempts() + 1, leaseExpiresAt,
+                        message.createdAt(), null, null);
+                outbox.set(index, claim);
+                claimed.add(claim);
+            }
+        }
+        return List.copyOf(claimed);
+    }
+
+    @Override
+    public void markOutboxPublished(final UUID messageId, final int attempts,
+                                    final Instant publishedAt) {
+        replace(messageId, attempts, message -> message.published(publishedAt));
+    }
+
+    @Override
+    public void markOutboxFailed(final UUID messageId, final int attempts,
+                                 final Instant nextAttemptAt, final String lastError) {
+        replace(messageId, attempts, message -> message.failed(nextAttemptAt, lastError));
+    }
+
+    private void replace(final UUID id, final int attempts,
+                         final java.util.function.UnaryOperator<OutboxMessage> update) {
+        for (int index = 0; index < outbox.size(); index++) {
+            final OutboxMessage message = outbox.get(index);
+            if (message.id().equals(id) && message.attempts() == attempts
+                    && message.status() == OutboxStatus.PROCESSING) {
+                outbox.set(index, update.apply(message));
+                return;
+            }
+        }
+        throw new IllegalStateException("Outbox claim not found.");
     }
 
     @Override

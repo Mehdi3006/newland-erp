@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Component;
@@ -76,10 +77,35 @@ public final class PostingInfrastructureAdapters {
 
   @Component
   public static final class RateAdapter implements PostingPorts.ExchangeRateValidationPort {
-    public void requireRate(final String code, final BigDecimal rate, final LocalDate date) {
+    private final MasterDataReferencePort masterData;
+    private final EnterpriseReferencePort enterprise;
+
+    public RateAdapter(final MasterDataReferencePort masterDataPort,
+                       final EnterpriseReferencePort enterprisePort) {
+      masterData = masterDataPort;
+      enterprise = enterprisePort;
+    }
+
+    public BigDecimal requireRate(final UUID companyId, final String code,
+                                  final BigDecimal rate, final LocalDate date) {
       if (rate == null || rate.signum() <= 0) {
         throw new IllegalArgumentException("Exchange rate is required.");
       }
+      final String baseCurrency = enterprise.companyBaseCurrency(companyId)
+          .orElseThrow(() -> new PostingException("Company base currency is unavailable."));
+      final BigDecimal resolved;
+      if (baseCurrency.equalsIgnoreCase(code)) {
+        resolved = BigDecimal.ONE;
+      } else {
+        resolved = masterData.resolveExchangeRate(companyId, code, baseCurrency, date)
+            .map(MasterDataReferencePort.ExchangeRateSnapshot::rate)
+            .orElseThrow(() -> new PostingException(
+                "Applicable company exchange rate is missing or expired."));
+      }
+      if (resolved.signum() <= 0 || resolved.compareTo(rate) != 0) {
+        throw new PostingException("Submitted exchange rate does not match the authoritative rate.");
+      }
+      return resolved;
     }
   }
 
@@ -269,10 +295,12 @@ public final class PostingInfrastructureAdapters {
       if (authentication == null || !authentication.isAuthenticated()) {
         throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
       }
+      validateSession(authentication);
       return authentication.getName();
     }
 
     public void require(final String actor, final String capability, final UUID companyId) {
+      validateCurrentSession(actor);
       if (!identity.isCompanyCapabilityGranted(
           authenticatedUser(actor), capability, companyId)) {
         throw new AccessDeniedException("Permission denied for company scope.");
@@ -280,6 +308,7 @@ public final class PostingInfrastructureAdapters {
     }
 
     public void requireGlobal(final String actor, final String capability) {
+      validateCurrentSession(actor);
       if (!identity.isSystemEnterpriseCapabilityGranted(
           authenticatedUser(actor), capability)) {
         throw new AccessDeniedException("Permission denied for enterprise scope.");
@@ -292,6 +321,34 @@ public final class PostingInfrastructureAdapters {
       } catch (IllegalArgumentException | NullPointerException exception) {
         throw new AuthenticationCredentialsNotFoundException(
             "Authenticated user identifier is invalid.");
+      }
+    }
+
+    private void validateCurrentSession(final String actor) {
+      final var authentication = SecurityContextHolder.getContext().getAuthentication();
+      if (authentication == null || !authentication.isAuthenticated()
+          || !authentication.getName().equals(actor)) {
+        throw new AuthenticationCredentialsNotFoundException("Authentication is required.");
+      }
+      validateSession(authentication);
+    }
+
+    private void validateSession(
+        final org.springframework.security.core.Authentication authentication) {
+      if (authentication instanceof JwtAuthenticationToken jwtAuthentication) {
+        final String sessionClaim = jwtAuthentication.getToken().getClaimAsString("session_id");
+        final UUID userId = authenticatedUser(authentication.getName());
+        final UUID sessionId;
+        try {
+          sessionId = UUID.fromString(sessionClaim);
+        } catch (IllegalArgumentException | NullPointerException exception) {
+          throw new AuthenticationCredentialsNotFoundException(
+              "Authenticated session identifier is invalid.");
+        }
+        if (!identity.isSessionAuthorized(userId, sessionId)) {
+          throw new AuthenticationCredentialsNotFoundException(
+              "Authenticated session is invalid, expired, or revoked.");
+        }
       }
     }
   }

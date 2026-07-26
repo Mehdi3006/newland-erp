@@ -79,6 +79,14 @@ public final class EnterpriseStructureService implements EnterpriseReferencePort
                 .orElse(false);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<String> companyBaseCurrency(final UUID companyId) {
+        return repository.findCompany(companyId)
+                .filter(company -> company.status() == LifecycleStatus.ACTIVE)
+                .map(company -> company.baseCurrency().value());
+    }
+
     @Transactional
     public Enterprise createEnterprise(final CreateEnterprise command, final RequestMetadata metadata) {
         authorization.require(EnterpriseStructurePermissions.ENTERPRISE_MANAGE);

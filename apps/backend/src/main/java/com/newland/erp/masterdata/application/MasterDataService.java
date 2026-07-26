@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -80,6 +81,45 @@ public final class MasterDataService implements MasterDataReferencePort {
         return repository.findByTypeAndCode(MasterDataType.CURRENCY, currencyCode)
                 .map(MasterDataRecord::active)
                 .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<ExchangeRateSnapshot> resolveExchangeRate(
+            final UUID companyId, final String sourceCurrency, final String targetCurrency,
+            final java.time.LocalDate effectiveDate) {
+        if (companyId == null || sourceCurrency == null || targetCurrency == null
+                || effectiveDate == null) {
+            return java.util.Optional.empty();
+        }
+        return repository.listByType(MasterDataType.EXCHANGE_RATE).stream()
+                .filter(MasterDataRecord::active)
+                .map(this::exchangeRate)
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::orElseThrow)
+                .filter(rate -> rate.companyId().equals(companyId)
+                        && rate.sourceCurrency().equalsIgnoreCase(sourceCurrency)
+                        && rate.targetCurrency().equalsIgnoreCase(targetCurrency)
+                        && !effectiveDate.isBefore(rate.validFrom())
+                        && (rate.validTo() == null || !effectiveDate.isAfter(rate.validTo())))
+                .findFirst();
+    }
+
+    private java.util.Optional<ExchangeRateSnapshot> exchangeRate(final MasterDataRecord record) {
+        final Map<String, String> attributes = record.attributes();
+        try {
+            final String validTo = attributes.get("validTo");
+            return java.util.Optional.of(new ExchangeRateSnapshot(
+                    record.id(),
+                    UUID.fromString(attributes.get("companyId")),
+                    attributes.get("sourceCurrency").toUpperCase(java.util.Locale.ROOT),
+                    attributes.get("targetCurrency").toUpperCase(java.util.Locale.ROOT),
+                    java.time.LocalDate.parse(attributes.get("validFrom")),
+                    validTo == null || validTo.isBlank() ? null : java.time.LocalDate.parse(validTo),
+                    new java.math.BigDecimal(attributes.get("rate"))));
+        } catch (RuntimeException exception) {
+            return java.util.Optional.empty();
+        }
     }
 
     private MasterDataRecord getVersioned(final UUID id, final long expectedVersion) {

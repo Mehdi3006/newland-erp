@@ -20,6 +20,14 @@ public interface PlatformRepository {
 
     List<OutboxMessage> listPendingOutboxMessages(int limit);
 
+    List<OutboxMessage> claimOutboxMessages(int limit, java.time.Instant now,
+                                            java.time.Instant leaseExpiresAt);
+
+    void markOutboxPublished(UUID messageId, int attempts, java.time.Instant publishedAt);
+
+    void markOutboxFailed(UUID messageId, int attempts, java.time.Instant nextAttemptAt,
+                          String lastError);
+
     AuditRecord insertAuditRecord(AuditRecord record);
 
     List<AuditRecord> listAuditRecords(String targetType, UUID targetId);

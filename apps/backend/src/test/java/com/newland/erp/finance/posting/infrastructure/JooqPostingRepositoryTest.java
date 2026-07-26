@@ -1021,15 +1021,9 @@ final class JooqPostingRepositoryTest {
                 enterpriseReferences(transactionalDsl)),
             new PostingInfrastructureAdapters.BranchAdapter(
                 enterpriseReferences(transactionalDsl)),
-            new PostingInfrastructureAdapters.CurrencyAdapter(
-                code ->
-                    transactionalDsl.fetchExists(
-                        DSL.table("master_data_record"),
-                        DSL.field("aggregate_type", String.class)
-                            .eq("CURRENCY")
-                            .and(DSL.field("code", String.class).eq(code))
-                            .and(DSL.field("active", Boolean.class).eq(true)))),
-            new PostingInfrastructureAdapters.RateAdapter(),
+            new PostingInfrastructureAdapters.CurrencyAdapter(masterDataReferences(transactionalDsl)),
+            new PostingInfrastructureAdapters.RateAdapter(
+                masterDataReferences(transactionalDsl), enterpriseReferences(transactionalDsl)),
             new PostingInfrastructureAdapters.PeriodAdapter(financeRepository),
             new PostingInfrastructureAdapters.DimensionsAdapter(financeRepository),
             new PostingInfrastructureAdapters.JournalAdapter(finance, financeRepository, evaluator),
@@ -1071,6 +1065,37 @@ final class JooqPostingRepositoryTest {
                 .eq(branchId)
                 .and(DSL.field("company_id", UUID.class).eq(companyId))
                 .and(DSL.field("status", String.class).eq("ACTIVE")));
+      }
+
+      @Override
+      public java.util.Optional<String> companyBaseCurrency(final UUID companyId) {
+        return context.select(DSL.field("base_currency", String.class))
+            .from(DSL.table("company"))
+            .where(DSL.field("id", UUID.class).eq(companyId)
+                .and(DSL.field("status", String.class).eq("ACTIVE")))
+            .fetchOptional(DSL.field("base_currency", String.class));
+      }
+    };
+  }
+
+  private static com.newland.erp.masterdata.application.integration.MasterDataReferencePort
+      masterDataReferences(final DSLContext context) {
+    return new com.newland.erp.masterdata.application.integration.MasterDataReferencePort() {
+      @Override
+      public boolean isActiveCurrency(final String code) {
+        return context.fetchExists(
+            DSL.table("master_data_record"),
+            DSL.field("aggregate_type", String.class)
+                .eq("CURRENCY")
+                .and(DSL.field("code", String.class).eq(code))
+                .and(DSL.field("active", Boolean.class).eq(true)));
+      }
+
+      @Override
+      public java.util.Optional<ExchangeRateSnapshot> resolveExchangeRate(
+          final UUID companyId, final String sourceCurrency, final String targetCurrency,
+          final LocalDate effectiveDate) {
+        return java.util.Optional.empty();
       }
     };
   }

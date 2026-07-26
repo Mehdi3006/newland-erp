@@ -206,6 +206,19 @@ public final class IdentityService implements IdentityAuthorizationPort {
         return hasEnterpriseCapability(userId, capability);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isSessionAuthorized(final UUID userId, final UUID sessionId) {
+        final User user = repository.findUser(userId).orElse(null);
+        if (user == null || !user.canAuthenticate(now())) {
+            return false;
+        }
+        return repository.findSession(sessionId)
+                .filter(session -> session.userId().equals(userId))
+                .map(session -> session.active(now()))
+                .orElse(false);
+    }
+
     @Transactional
     public AuthTokens login(final IdentityCommands.Login command) {
         final User user = repository.findUserByUsername(command.username())
