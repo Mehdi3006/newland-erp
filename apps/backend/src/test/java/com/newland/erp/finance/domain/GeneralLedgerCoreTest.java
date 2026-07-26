@@ -61,7 +61,8 @@ final class GeneralLedgerCoreTest {
             new BigDecimal("1.250000000000"),
             new BigDecimal("80.000000"),
             new BigDecimal("100.000000"),
-            tax);
+            tax,
+            java.time.Instant.parse("2026-07-15T00:00:00Z"));
     tax.clear();
 
     assertThat(snapshot.transactionCurrency()).isEqualTo("EUR");
@@ -79,7 +80,8 @@ final class GeneralLedgerCoreTest {
                     new BigDecimal("1.100000000000"),
                     BigDecimal.TEN,
                     new BigDecimal("11"),
-                    Map.of()))
+                    Map.of(),
+                    java.time.Instant.parse("2026-07-15T00:00:00Z")))
         .isInstanceOf(FinanceException.class);
   }
 

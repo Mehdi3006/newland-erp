@@ -115,6 +115,7 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V18__crm_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V19__service_warranty_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V20__general_ledger_core.sql',
+  'apps/backend/src/main/resources/db/migration/V21__general_ledger_release_guards.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',

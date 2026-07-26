@@ -3,6 +3,7 @@ package com.newland.erp.finance.domain;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +20,8 @@ public record JournalPostingSnapshot(
     BigDecimal exchangeRate,
     BigDecimal transactionAmount,
     BigDecimal baseAmount,
-    Map<String, String> taxContext) {
+    Map<String, String> taxContext,
+    Instant postedAt) {
   public JournalPostingSnapshot {
     AccountingPeriodContract.required(journalEntryId, "journal entry id");
     transactionCurrency = currency(transactionCurrency, "transaction currency");
@@ -32,6 +34,7 @@ public record JournalPostingSnapshot(
     transactionAmount = nonNegative(transactionAmount, "transaction amount");
     baseAmount = nonNegative(baseAmount, "base amount");
     taxContext = taxContext == null ? Map.of() : Map.copyOf(taxContext);
+    AccountingPeriodContract.required(postedAt, "posting timestamp");
     taxContext.forEach(
         (key, value) -> {
           if (key == null || key.isBlank() || value == null || value.isBlank()) {

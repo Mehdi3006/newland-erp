@@ -296,7 +296,8 @@ public final class PostingInfrastructureAdapters {
           event.exchangeRate(),
           event.amount(),
           event.amount().multiply(event.exchangeRate()),
-          taxContext);
+          taxContext,
+          java.time.Instant.now());
     }
 
     @Override

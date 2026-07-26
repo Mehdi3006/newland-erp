@@ -2,6 +2,7 @@ package com.newland.erp.finance.application;
 
 import com.newland.erp.finance.domain.Account;
 import com.newland.erp.finance.domain.AccountingPeriod;
+import com.newland.erp.finance.domain.AccountingPeriodContract;
 import com.newland.erp.finance.domain.ChartOfAccounts;
 import com.newland.erp.finance.domain.FinanceException;
 import com.newland.erp.finance.domain.FiscalYear;
@@ -22,6 +23,7 @@ public final class FinanceService {
   private final FinancePorts.EnterprisePort enterprise;
   private final FinancePorts.MasterDataPort masterData;
   private final FinancePorts.AuthorizationPort authorization;
+  private final FinancePorts.PostingSnapshotPort snapshots;
   private final FinancePorts.NumberSeriesPort numbers;
   private final FinancePorts.AuditPort audit;
   private final FinancePorts.OutboxPort outbox;
@@ -33,6 +35,7 @@ public final class FinanceService {
       final FinancePorts.EnterprisePort enterprisePort,
       final FinancePorts.MasterDataPort masterDataPort,
       final FinancePorts.AuthorizationPort authorizationPort,
+      final FinancePorts.PostingSnapshotPort postingSnapshotPort,
       final FinancePorts.NumberSeriesPort numberSeriesPort,
       final FinancePorts.AuditPort auditPort,
       final FinancePorts.OutboxPort outboxPort,
@@ -42,6 +45,7 @@ public final class FinanceService {
     this.enterprise = enterprisePort;
     this.masterData = masterDataPort;
     this.authorization = authorizationPort;
+    this.snapshots = postingSnapshotPort;
     this.numbers = numberSeriesPort;
     this.audit = auditPort;
     this.outbox = outboxPort;
@@ -137,7 +141,11 @@ public final class FinanceService {
     }
     enterprise.requireCompanyBranch(command.companyId(), command.branchId());
     validatePeriod(
-        command.companyId(), command.fiscalYearId(), command.periodId(), command.postingDate());
+        command.companyId(),
+        command.fiscalYearId(),
+        command.periodId(),
+        command.postingDate(),
+        purpose(command.postingPurpose()));
     validateLines(command.actor(), command.companyId(), command.lines());
     final JournalEntry entry =
         new JournalEntry(
@@ -172,28 +180,44 @@ public final class FinanceService {
 
   @Transactional
   public JournalEntry postJournal(final FinanceCommands.PostJournal command) {
-    return postJournalInternal(command.journalId(), null, command.actor());
+    final JournalEntry entry = journal(command.journalId());
+    final JournalPostingSnapshot snapshot =
+        snapshots.resolve(entry, command.taxContext(), Instant.now(clock));
+    return postJournalInternal(
+        entry, purpose(command.postingPurpose()), snapshot, command.actor());
   }
 
   @Transactional
   public JournalEntry postJournalWithSnapshot(
       final FinanceCommands.PostJournalWithSnapshot command) {
-    return postJournalInternal(command.journalId(), command.snapshot(), command.actor());
+    return postJournalInternal(
+        journal(command.journalId()),
+        purpose(command.postingPurpose()),
+        command.snapshot(),
+        command.actor());
   }
 
   private JournalEntry postJournalInternal(
-      final UUID journalId, final JournalPostingSnapshot snapshot, final String actor) {
-    final JournalEntry entry = journal(journalId);
+      final JournalEntry entry,
+      final AccountingPeriodContract.PostingPurpose postingPurpose,
+      final JournalPostingSnapshot snapshot,
+      final String actor) {
     authorization.require(actor, "finance.journal.post", entry.companyId());
-    validatePeriod(entry.companyId(), entry.fiscalYearId(), entry.periodId(), entry.postingDate());
+    if (postingPurpose == AccountingPeriodContract.PostingPurpose.CLOSE_ADJUSTMENT) {
+      authorization.require(actor, "finance.journal.close-adjustment.post", entry.companyId());
+    }
+    validatePeriod(
+        entry.companyId(),
+        entry.fiscalYearId(),
+        entry.periodId(),
+        entry.postingDate(),
+        postingPurpose);
     validateLines(actor, entry.companyId(), entry.lines());
-    if (snapshot != null && !snapshot.journalEntryId().equals(entry.id())) {
+    if (snapshot == null || !snapshot.journalEntryId().equals(entry.id())) {
       throw new FinanceException("Posting snapshot journal scope is invalid.");
     }
+    repository.savePostingSnapshot(snapshot);
     final JournalEntry posted = repository.saveJournal(entry.post());
-    if (snapshot != null) {
-      repository.savePostingSnapshot(snapshot);
-    }
     audit.record(actor, "FINANCE_JOURNAL_POSTED", posted.id());
     outbox.publish("FinanceJournalPosted", posted.id());
     return posted;
@@ -225,10 +249,13 @@ public final class FinanceService {
                 period.fiscalYearId(),
                 period.periodId(),
                 postingDate,
+                AccountingPeriodContract.PostingPurpose.ORDINARY,
                 lines,
                 List.of(),
                 actor));
-    return postJournal(new FinanceCommands.PostJournal(draft.id(), actor));
+    return postJournal(
+        new FinanceCommands.PostJournal(
+            draft.id(), AccountingPeriodContract.PostingPurpose.ORDINARY, java.util.Map.of(), actor));
   }
 
   @Transactional
@@ -282,7 +309,8 @@ public final class FinanceService {
     audit.record(actor, "FINANCE_JOURNAL_DRAFT_CREATED", draft.id());
     final JournalPostingSnapshot snapshot = snapshotFactory.create(draft.id());
     return postJournalWithSnapshot(
-        new FinanceCommands.PostJournalWithSnapshot(draft.id(), snapshot, actor));
+        new FinanceCommands.PostJournalWithSnapshot(
+            draft.id(), AccountingPeriodContract.PostingPurpose.ORDINARY, snapshot, actor));
   }
 
   private JournalEntry resumeIdempotentPosting(
@@ -305,15 +333,18 @@ public final class FinanceService {
     if (existing.status() != JournalEntry.JournalStatus.DRAFT) {
       throw new FinanceException("Existing idempotent journal cannot be posted.");
     }
-    return postJournal(new FinanceCommands.PostJournal(existing.id(), actor));
+    return postJournal(
+        new FinanceCommands.PostJournal(
+            existing.id(),
+            AccountingPeriodContract.PostingPurpose.ORDINARY,
+            java.util.Map.of(),
+            actor));
   }
 
   @Transactional
   public JournalEntry reverseJournal(final FinanceCommands.ReverseJournal command) {
     final JournalEntry original = journal(command.journalId());
     authorization.require(command.actor(), "finance.journal.reverse", original.companyId());
-    validatePeriod(
-        original.companyId(), original.fiscalYearId(), original.periodId(), original.postingDate());
     if (original.status() != JournalEntry.JournalStatus.POSTED) {
       throw new FinanceException("Only posted journals can be reversed.");
     }
@@ -323,6 +354,15 @@ public final class FinanceService {
     if (repository.idempotencyKeyExists(command.idempotencyKey())) {
       throw new FinanceException("Duplicate journal idempotency key.");
     }
+    final AccountingPeriodContract.PostingPurpose postingPurpose = purpose(command.postingPurpose());
+    if (postingPurpose == AccountingPeriodContract.PostingPurpose.CLOSE_ADJUSTMENT) {
+      authorization.require(
+          command.actor(), "finance.journal.close-adjustment.post", original.companyId());
+    }
+    final FinanceRepository.PostingPeriod reversalPeriod =
+        repository
+            .findPostingPeriod(original.companyId(), command.postingDate(), postingPurpose)
+            .orElseThrow(() -> new FinanceException("No eligible reversal accounting period exists."));
     final List<JournalEntry.JournalLine> lines =
         original.lines().stream()
             .map(
@@ -346,9 +386,9 @@ public final class FinanceService {
             command.idempotencyKey(),
             original.companyId(),
             original.branchId(),
-            original.fiscalYearId(),
-            original.periodId(),
-            original.postingDate(),
+            reversalPeriod.fiscalYearId(),
+            reversalPeriod.periodId(),
+            command.postingDate(),
             JournalEntry.JournalStatus.DRAFT,
             lines,
             original.id(),
@@ -364,13 +404,13 @@ public final class FinanceService {
       }
       throw new FinanceException("Reversal idempotency key was reused with conflicting data.");
     }
-    final JournalEntry reversal = repository.saveJournal(reversalDraft.post());
-    repository
+    final JournalPostingSnapshot reversalSnapshot =
+        repository
         .findPostingSnapshot(original.id())
         .map(
             snapshot ->
                 new JournalPostingSnapshot(
-                    reversal.id(),
+                    reversalDraft.id(),
                     snapshot.transactionCurrency(),
                     snapshot.baseCurrency(),
                     snapshot.exchangeRateId(),
@@ -380,8 +420,11 @@ public final class FinanceService {
                     snapshot.exchangeRate(),
                     snapshot.transactionAmount(),
                     snapshot.baseAmount(),
-                    snapshot.taxContext()))
-        .ifPresent(repository::savePostingSnapshot);
+                    snapshot.taxContext(),
+                    Instant.now(clock)))
+        .orElseThrow(() -> new FinanceException("Original journal posting snapshot is missing."));
+    repository.savePostingSnapshot(reversalSnapshot);
+    final JournalEntry reversal = repository.saveJournal(reversalDraft.post());
     repository.saveReversal(new JournalReversal(UUID.randomUUID(), original.id(), reversal.id()));
     audit.record(command.actor(), "FINANCE_JOURNAL_REVERSED", reversal.id());
     outbox.publish("FinanceJournalReversed", reversal.id());
@@ -396,7 +439,8 @@ public final class FinanceService {
       final UUID companyId,
       final UUID fiscalYearId,
       final UUID periodId,
-      final java.time.LocalDate date) {
+      final java.time.LocalDate date,
+      final AccountingPeriodContract.PostingPurpose postingPurpose) {
     final FiscalYear year =
         repository
             .findFiscalYear(fiscalYearId)
@@ -415,8 +459,7 @@ public final class FinanceService {
     if (year.closed()) {
       throw new FinanceException("Closed accounting periods cannot accept postings.");
     }
-    period.requirePostingAllowed(
-        date, com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose.ORDINARY);
+    period.requirePostingAllowed(date, postingPurpose);
   }
 
   private void validateLines(
@@ -435,12 +478,40 @@ public final class FinanceService {
         masterData.requireCurrency(line.currencyId());
       }
       if (line.costCenterId() != null) {
+        final var costCenter =
+            repository
+                .findCostCenter(companyId, line.costCenterId())
+                .orElseThrow(
+                    () ->
+                        new FinanceException(
+                            "Cost center is inactive or outside journal company scope."));
+        if (!costCenter.active()) {
+          throw new FinanceException("Cost center is inactive or outside journal company scope.");
+        }
         authorization.requireCostCenter(actor, line.costCenterId());
+      }
+      if (line.profitCenterId() != null) {
+        final var profitCenter =
+            repository
+                .findProfitCenter(companyId, line.profitCenterId())
+                .orElseThrow(
+                    () ->
+                        new FinanceException(
+                            "Profit center is inactive or outside journal company scope."));
+        if (!profitCenter.active()) {
+          throw new FinanceException("Profit center is inactive or outside journal company scope.");
+        }
+        authorization.requireProfitCenter(actor, line.profitCenterId());
       }
       if (line.dimensionCode() != null) {
         authorization.requireDimension(actor, line.dimensionCode());
       }
     }
+  }
+
+  private static AccountingPeriodContract.PostingPurpose purpose(
+      final AccountingPeriodContract.PostingPurpose value) {
+    return value == null ? AccountingPeriodContract.PostingPurpose.ORDINARY : value;
   }
 
   @FunctionalInterface

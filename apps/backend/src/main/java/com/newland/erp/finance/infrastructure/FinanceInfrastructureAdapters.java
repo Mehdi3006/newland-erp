@@ -1,10 +1,17 @@
 package com.newland.erp.finance.infrastructure;
 
 import com.newland.erp.finance.application.FinancePorts;
+import com.newland.erp.finance.domain.FinanceException;
+import com.newland.erp.finance.domain.JournalEntry;
+import com.newland.erp.finance.domain.JournalPostingSnapshot;
 import com.newland.erp.enterprise.application.integration.EnterpriseReferencePort;
 import com.newland.erp.identity.application.integration.IdentityAuthorizationPort;
+import com.newland.erp.masterdata.application.integration.MasterDataReferencePort;
 import com.newland.erp.platform.application.integration.PlatformAuditOutboxPort;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -31,6 +38,110 @@ public final class FinanceInfrastructureAdapters {
         throw new IllegalArgumentException(
             "Company or branch is inactive or outside the requested scope.");
       }
+    }
+  }
+
+  @Component
+  public static final class PostingSnapshotAdapter
+      implements FinancePorts.PostingSnapshotPort {
+    private final EnterpriseReferencePort enterprise;
+    private final MasterDataReferencePort masterData;
+    private final DSLContext dsl;
+
+    public PostingSnapshotAdapter(
+        final EnterpriseReferencePort enterpriseReferencePort,
+        final MasterDataReferencePort masterDataReferencePort,
+        final DSLContext dslContext) {
+      enterprise = enterpriseReferencePort;
+      masterData = masterDataReferencePort;
+      dsl = dslContext;
+    }
+
+    @Override
+    public JournalPostingSnapshot resolve(
+        final JournalEntry journal,
+        final Map<String, String> taxContext,
+        final Instant postedAt) {
+      final String baseCurrency =
+          enterprise
+              .companyBaseCurrency(journal.companyId())
+              .orElseThrow(() -> new FinanceException("Company accounting currency is unavailable."));
+      final var currencyIds =
+          journal.lines().stream()
+              .map(JournalEntry.JournalLine::currencyId)
+              .filter(Objects::nonNull)
+              .distinct()
+              .toList();
+      if (currencyIds.size() > 1) {
+        throw new FinanceException("A manual journal must use one transaction currency.");
+      }
+      final String transactionCurrency =
+          currencyIds.isEmpty() ? baseCurrency : currencyCode(currencyIds.getFirst());
+      final BigDecimal amount =
+          journal.lines().stream()
+              .map(JournalEntry.JournalLine::debit)
+              .reduce(BigDecimal.ZERO, BigDecimal::add);
+      if (transactionCurrency.equals(baseCurrency)) {
+        return new JournalPostingSnapshot(
+            journal.id(),
+            transactionCurrency,
+            baseCurrency,
+            null,
+            "ENTERPRISE",
+            "SPOT",
+            journal.postingDate(),
+            BigDecimal.ONE,
+            amount,
+            amount,
+            taxContext,
+            postedAt);
+      }
+      final MasterDataReferencePort.ExchangeRateSnapshot rate =
+          masterData
+              .resolveExchangeRate(
+                  journal.companyId(),
+                  transactionCurrency,
+                  baseCurrency,
+                  journal.postingDate())
+              .orElseThrow(
+                  () -> new FinanceException("Authoritative exchange-rate snapshot is missing."));
+      journal.lines().stream()
+          .map(JournalEntry.JournalLine::exchangeRateSnapshot)
+          .filter(Objects::nonNull)
+          .filter(value -> value.compareTo(rate.rate()) != 0)
+          .findAny()
+          .ifPresent(
+              ignored -> {
+                throw new FinanceException(
+                    "Journal line exchange rate differs from the authoritative rate.");
+              });
+      return new JournalPostingSnapshot(
+          journal.id(),
+          transactionCurrency,
+          baseCurrency,
+          rate.rateId(),
+          "MASTER_DATA",
+          "SPOT",
+          journal.postingDate(),
+          rate.rate(),
+          amount,
+          amount.multiply(rate.rate()),
+          taxContext,
+          postedAt);
+    }
+
+    private String currencyCode(final UUID currencyId) {
+      final String code =
+          dsl.select(DSL.field("code", String.class))
+              .from(DSL.table("master_data_record"))
+              .where(DSL.field("id", UUID.class).eq(currencyId))
+              .and(DSL.field("aggregate_type", String.class).eq("CURRENCY"))
+              .and(DSL.field("active", Boolean.class).eq(true))
+              .fetchOne(0, String.class);
+      if (code == null) {
+        throw new FinanceException("Transaction currency is missing or inactive.");
+      }
+      return code;
     }
   }
 
@@ -78,6 +189,13 @@ public final class FinanceInfrastructureAdapters {
     public void requireCostCenter(final String actor, final UUID id) {
       if (id == null) {
         throw new IllegalArgumentException("Cost center is required.");
+      }
+      requireCurrentSession(actor);
+    }
+
+    public void requireProfitCenter(final String actor, final UUID id) {
+      if (id == null) {
+        throw new IllegalArgumentException("Profit center is required.");
       }
       requireCurrentSession(actor);
     }

@@ -448,7 +448,8 @@ public final class JooqFinanceRepository implements FinanceRepository {
             DSL.field("exchange_rate"),
             DSL.field("transaction_amount"),
             DSL.field("base_amount"),
-            DSL.field("tax_context"))
+            DSL.field("tax_context"),
+            DSL.field("posted_at"))
         .values(
             snapshot.journalEntryId(),
             snapshot.transactionCurrency(),
@@ -460,7 +461,8 @@ public final class JooqFinanceRepository implements FinanceRepository {
             snapshot.exchangeRate(),
             snapshot.transactionAmount(),
             snapshot.baseAmount(),
-            taxContext)
+            taxContext,
+            OffsetDateTime.ofInstant(snapshot.postedAt(), ZoneOffset.UTC))
         .execute();
     return snapshot;
   }
@@ -482,7 +484,8 @@ public final class JooqFinanceRepository implements FinanceRepository {
                     row.get("exchange_rate", BigDecimal.class),
                     row.get("transaction_amount", BigDecimal.class),
                     row.get("base_amount", BigDecimal.class),
-                    readMap(row.get("tax_context", JSONB.class))));
+                    readMap(row.get("tax_context", JSONB.class)),
+                    row.get("posted_at", OffsetDateTime.class).toInstant()));
   }
 
   @Override

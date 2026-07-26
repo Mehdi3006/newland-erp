@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.newland.erp.finance.application.FinanceCommands;
+import com.newland.erp.finance.application.FinancePorts;
+import com.newland.erp.finance.application.FinanceService;
 import com.newland.erp.finance.domain.Account;
 import com.newland.erp.finance.domain.AccountingPeriod;
+import com.newland.erp.finance.domain.AccountingPeriodContract;
+import com.newland.erp.finance.domain.FinanceException;
 import com.newland.erp.finance.domain.FiscalYear;
 import com.newland.erp.finance.domain.FinancialDocumentNumber;
 import com.newland.erp.finance.domain.JournalEntry;
@@ -13,6 +18,7 @@ import com.newland.erp.finance.domain.JournalPostingSnapshot;
 import com.newland.erp.masterdata.application.integration.MasterDataReferencePort;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -101,10 +107,10 @@ final class JooqGeneralLedgerCoreTest {
   @Test
   void persistsPostingSnapshotAndProtectsPostedJournalAndSnapshot() {
     final JournalEntry draft = repository.insertJournal(journal("snapshot-key"));
-    repository.saveJournal(draft.post());
     final JournalPostingSnapshot snapshot =
         snapshot(draft.id());
     repository.savePostingSnapshot(snapshot);
+    repository.saveJournal(draft.post());
 
     assertThat(repository.findPostingSnapshot(draft.id())).contains(snapshot);
     assertThatThrownBy(
@@ -120,6 +126,184 @@ final class JooqGeneralLedgerCoreTest {
                     .where(DSL.field("journal_entry_id", UUID.class).eq(draft.id()))
                     .execute())
         .isInstanceOf(DataAccessException.class);
+  }
+
+  @Test
+  void databaseRejectsEveryPostedJournalWithoutSnapshot() {
+    final JournalEntry draft = repository.insertJournal(journal("missing-snapshot"));
+
+    assertThatThrownBy(() -> repository.saveJournal(draft.post()))
+        .isInstanceOf(DataAccessException.class)
+        .rootCause()
+        .hasMessageContaining("requires an authoritative posting snapshot");
+  }
+
+  @Test
+  void resolvesClosingPeriodsOnlyForCloseAdjustmentsAndNeverClosedPeriods() {
+    final LocalDate date = LocalDate.of(2026, 7, 15);
+    final AccountingPeriod open = repository.findPeriod(periodId).orElseThrow();
+    repository.updatePeriod(open.transitionTo(AccountingPeriod.State.CLOSING), open.state());
+
+    assertThat(
+            repository.findPostingPeriod(
+                companyId,
+                date,
+                com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose.ORDINARY))
+        .isEmpty();
+    assertThat(
+            repository.findPostingPeriod(
+                companyId,
+                date,
+                com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose
+                    .CLOSE_ADJUSTMENT))
+        .contains(new com.newland.erp.finance.application.FinanceRepository.PostingPeriod(
+            fiscalYearId, periodId));
+
+    final AccountingPeriod closing = repository.findPeriod(periodId).orElseThrow();
+    repository.updatePeriod(closing.transitionTo(AccountingPeriod.State.CLOSED), closing.state());
+    assertThat(
+            repository.findPostingPeriod(
+                companyId,
+                date,
+                com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose
+                    .CLOSE_ADJUSTMENT))
+        .isEmpty();
+  }
+
+  @Test
+  void postsClosingAdjustmentWithMandatorySnapshotAndRejectsOrdinaryPosting() {
+    final JournalEntry draft = repository.insertJournal(journal("closing-adjustment"));
+    final AccountingPeriod open = repository.findPeriod(periodId).orElseThrow();
+    repository.updatePeriod(open.transitionTo(AccountingPeriod.State.CLOSING), open.state());
+    final FinanceService service = service();
+
+    assertThatThrownBy(
+            () ->
+                service.postJournal(
+                    new FinanceCommands.PostJournal(
+                        draft.id(), AccountingPeriodContract.PostingPurpose.ORDINARY, Map.of(), "actor")))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("does not allow");
+
+    final JournalEntry posted =
+        service.postJournal(
+            new FinanceCommands.PostJournal(
+                draft.id(),
+                AccountingPeriodContract.PostingPurpose.CLOSE_ADJUSTMENT,
+                Map.of("taxCategory", "NONE"),
+                "actor"));
+
+    assertThat(posted.status()).isEqualTo(JournalEntry.JournalStatus.POSTED);
+    assertThat(repository.findPostingSnapshot(posted.id()))
+        .get()
+        .extracting(JournalPostingSnapshot::postedAt)
+        .isEqualTo(NOW);
+  }
+
+  @Test
+  void reversesIntoPeriodResolvedFromReversalDateAfterOriginalPeriodCloses() {
+    final JournalEntry originalDraft = repository.insertJournal(journal("original-for-reversal"));
+    repository.savePostingSnapshot(snapshot(originalDraft.id()));
+    final JournalEntry original = repository.saveJournal(originalDraft.post());
+    final AccountingPeriod open = repository.findPeriod(periodId).orElseThrow();
+    final AccountingPeriod closing =
+        repository.updatePeriod(open.transitionTo(AccountingPeriod.State.CLOSING), open.state());
+    repository.updatePeriod(
+        closing.transitionTo(AccountingPeriod.State.CLOSED), AccountingPeriod.State.CLOSING);
+    final UUID augustPeriodId = UUID.randomUUID();
+    repository.savePeriod(
+        new AccountingPeriod(
+            augustPeriodId,
+            fiscalYearId,
+            "2026-08",
+            LocalDate.of(2026, 8, 1),
+            LocalDate.of(2026, 8, 31),
+            AccountingPeriod.State.OPEN));
+
+    final JournalEntry reversal =
+        service()
+            .reverseJournal(
+                new FinanceCommands.ReverseJournal(
+                    original.id(),
+                    "reversal-" + UUID.randomUUID(),
+                    LocalDate.of(2026, 8, 5),
+                    AccountingPeriodContract.PostingPurpose.ORDINARY,
+                    "actor"));
+
+    assertThat(reversal.status()).isEqualTo(JournalEntry.JournalStatus.POSTED);
+    assertThat(reversal.periodId()).isEqualTo(augustPeriodId);
+    assertThat(reversal.postingDate()).isEqualTo(LocalDate.of(2026, 8, 5));
+    assertThat(reversal.reversalOfId()).isEqualTo(original.id());
+    assertThat(repository.findPostingSnapshot(reversal.id())).isPresent();
+  }
+
+  @Test
+  void rejectsInactiveAndForeignCompanyCostAndProfitCenters() {
+    final UUID inactiveCostCenter = UUID.randomUUID();
+    final UUID inactiveProfitCenter = UUID.randomUUID();
+    dsl.insertInto(DSL.table("finance_cost_center"))
+        .columns(
+            DSL.field("id"),
+            DSL.field("company_id"),
+            DSL.field("code"),
+            DSL.field("active"))
+        .values(inactiveCostCenter, companyId, "CC-INACTIVE", false)
+        .execute();
+    dsl.insertInto(DSL.table("finance_profit_center"))
+        .columns(
+            DSL.field("id"),
+            DSL.field("company_id"),
+            DSL.field("code"),
+            DSL.field("active"))
+        .values(inactiveProfitCenter, companyId, "PC-INACTIVE", false)
+        .execute();
+    final BigDecimal amount = new BigDecimal("100.000000");
+
+    assertThatThrownBy(
+            () ->
+                service()
+                    .createJournal(
+                        createJournal(
+                            "inactive-cost",
+                            line(
+                                debitAccountId,
+                                amount,
+                                BigDecimal.ZERO,
+                                inactiveCostCenter,
+                                null),
+                            line(creditAccountId, BigDecimal.ZERO, amount))))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("Cost center is inactive");
+    assertThatThrownBy(
+            () ->
+                service()
+                    .createJournal(
+                        createJournal(
+                            "inactive-profit",
+                            line(
+                                debitAccountId,
+                                amount,
+                                BigDecimal.ZERO,
+                                null,
+                                inactiveProfitCenter),
+                            line(creditAccountId, BigDecimal.ZERO, amount))))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("Profit center is inactive");
+    assertThatThrownBy(
+            () ->
+                service()
+                    .createJournal(
+                        createJournal(
+                            "foreign-center",
+                            line(
+                                debitAccountId,
+                                amount,
+                                BigDecimal.ZERO,
+                                UUID.randomUUID(),
+                                null),
+                            line(creditAccountId, BigDecimal.ZERO, amount))))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("outside journal company scope");
   }
 
   @Test
@@ -264,17 +448,87 @@ final class JooqGeneralLedgerCoreTest {
 
   private JournalEntry.JournalLine line(
       final UUID accountId, final BigDecimal debit, final BigDecimal credit) {
+    return line(accountId, debit, credit, null, null);
+  }
+
+  private JournalEntry.JournalLine line(
+      final UUID accountId,
+      final BigDecimal debit,
+      final BigDecimal credit,
+      final UUID costCenterId,
+      final UUID profitCenterId) {
     return new JournalEntry.JournalLine(
         UUID.randomUUID(),
         accountId,
         debit,
         credit,
-        null,
-        null,
+        costCenterId,
+        profitCenterId,
         null,
         null,
         debit.max(credit),
         BigDecimal.ONE);
+  }
+
+  private FinanceCommands.CreateJournal createJournal(
+      final String key, final JournalEntry.JournalLine... lines) {
+    return new FinanceCommands.CreateJournal(
+        key,
+        companyId,
+        branchId,
+        fiscalYearId,
+        periodId,
+        LocalDate.of(2026, 7, 15),
+        AccountingPeriodContract.PostingPurpose.ORDINARY,
+        List.of(lines),
+        List.of(),
+        "actor");
+  }
+
+  private FinanceService service() {
+    final FinancePorts.AuthorizationPort authorization =
+        new FinancePorts.AuthorizationPort() {
+          @Override
+          public void require(
+              final String actor, final String capability, final UUID scopedCompanyId) {}
+
+          @Override
+          public void requireCostCenter(final String actor, final UUID costCenterId) {}
+
+          @Override
+          public void requireProfitCenter(final String actor, final UUID profitCenterId) {}
+
+          @Override
+          public void requireDimension(final String actor, final String dimensionCode) {}
+        };
+    return new FinanceService(
+        repository,
+        (scopedCompanyId, scopedBranchId) -> {},
+        currencyId -> {},
+        authorization,
+        (journal, taxContext, postedAt) ->
+            new JournalPostingSnapshot(
+                journal.id(),
+                "USD",
+                "USD",
+                null,
+                "ENTERPRISE",
+                "SPOT",
+                journal.postingDate(),
+                BigDecimal.ONE,
+                journal.lines().stream()
+                    .map(JournalEntry.JournalLine::debit)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add),
+                journal.lines().stream()
+                    .map(JournalEntry.JournalLine::debit)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add),
+                taxContext,
+                postedAt),
+        series -> series + "-" + UUID.randomUUID(),
+        (actor, action, id) -> {},
+        (type, aggregateId) -> {},
+        (aggregateId, attachmentId) -> {},
+        Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   private JournalPostingSnapshot snapshot(final UUID journalId) {
@@ -289,7 +543,8 @@ final class JooqGeneralLedgerCoreTest {
         BigDecimal.ONE,
         new BigDecimal("100"),
         new BigDecimal("100"),
-        Map.of("taxCategory", "NONE"));
+        Map.of("taxCategory", "NONE"),
+        NOW);
   }
 
   private Account account(final UUID id, final String code) {

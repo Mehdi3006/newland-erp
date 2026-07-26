@@ -516,6 +516,9 @@ final class JooqPostingRepositoryTest {
             (company, branch) -> {},
             currency -> {},
             allowAllAuthorization(),
+            (journal, taxContext, postedAt) -> {
+              throw new UnsupportedOperationException();
+            },
             series -> "JE-POSTING-1",
             (actor, action, id) -> auditActions.add(action),
             (type, id) -> outboxEvents.add(type),
@@ -1329,6 +1332,9 @@ final class JooqPostingRepositoryTest {
             (company, branch) -> {},
             currency -> {},
             allowAllAuthorization(),
+            (journal, taxContext, postedAt) -> {
+              throw new UnsupportedOperationException();
+            },
             series -> "JE-" + UUID.randomUUID(),
             platformAdapter::record,
             outbox::publish,
@@ -1542,6 +1548,9 @@ final class JooqPostingRepositoryTest {
 
       @Override
       public void requireCostCenter(final String actor, final UUID costCenterId) {}
+
+      @Override
+      public void requireProfitCenter(final String actor, final UUID profitCenterId) {}
 
       @Override
       public void requireDimension(final String actor, final String dimensionCode) {}

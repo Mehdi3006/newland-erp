@@ -1,5 +1,9 @@
 package com.newland.erp.finance.application;
 
+import com.newland.erp.finance.domain.JournalEntry;
+import com.newland.erp.finance.domain.JournalPostingSnapshot;
+import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 public final class FinancePorts {
@@ -16,7 +20,14 @@ public final class FinancePorts {
 
     void requireCostCenter(String actor, UUID costCenterId);
 
+    void requireProfitCenter(String actor, UUID profitCenterId);
+
     void requireDimension(String actor, String dimensionCode);
+  }
+
+  public interface PostingSnapshotPort {
+    JournalPostingSnapshot resolve(
+        JournalEntry journal, Map<String, String> taxContext, Instant postedAt);
   }
 
   public interface NumberSeriesPort {
