@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Phase P3.12.0 Finance Foundation Contracts for validated accounting-period, journal,
+  financial-document numbering, currency/exchange-rate, and published posting boundaries. No AP or
+  AR workflow or persistence is included.
+
 - Phase P3.11 Service and Warranty foundation for configurable company/product warranty policies,
   service tickets, authoritative customer/product/serial/sales-evidence validation, diagnosis,
   repair or replacement decisions, documented closure, audit, and transactional outbox events.

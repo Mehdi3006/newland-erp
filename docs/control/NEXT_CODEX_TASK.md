@@ -1,18 +1,22 @@
 # Next Codex Task
 
-## Recommended Task: Review P3.11 Service and Warranty
+## Recommended Task: Review P3.12.0 Finance Foundation Contracts
 
-P3.11 is implemented on a feature branch and must pass architecture review before merge.
+P3.12.0 is implemented on a feature branch and must pass engineering and architecture review before
+merge.
 
-Review service-ticket lifecycle invariants, configurable warranty-policy precedence, authoritative
-Sales/Product/Inventory evidence ports, company authorization, idempotency, optimistic locking,
-audit/outbox consistency, Flyway constraints, and PostgreSQL integration coverage.
+Review accounting-period state and posting-purpose validation, balanced journal reconciliation
+contracts, immutable financial-document numbering assignments, company-scoped currency and
+exchange-rate snapshots, published application ports, posting-message validation, DTO isolation, and
+Spring Modulith boundaries.
 
-Do not begin P3.12 or another bounded context until P3.11 is approved.
+Do not begin P3.12.1, AP, AR, Treasury, or another bounded context until P3.12.0 is approved.
 
-## P3.11 Boundaries
+## P3.12.0 Boundaries
 
-- No Inventory issue, replacement-stock execution, or balance mutation.
-- No service invoicing or accounting posting.
-- No technician scheduling or mobile workflow.
-- No direct persistence access across bounded contexts.
+- No AP supplier-invoice or payment workflow.
+- No AR customer-invoice, collection, aging, or allocation workflow.
+- No new Finance persistence or migration.
+- No UI or new REST endpoint.
+- Existing P3.7 Finance and P3.8 Posting Engine behavior remains authoritative.
+- Existing Procurement, Inventory, Sales, and Service/Warranty integrations remain unchanged.
