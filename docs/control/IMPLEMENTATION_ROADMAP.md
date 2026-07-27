@@ -23,7 +23,8 @@ is explicitly accepted.
 | P3.9.5  | Inventory and Quality Extensions   | Implement QC hold/release and advanced inventory operations after Inventory Foundation approval.                                                                                                      | Valuation and QC policy.                                 |
 | P3.10   | CRM                                | Implement lead, opportunity, activity, customer timeline.                                                                                                                                             | Approved and merged.                                     |
 | P3.11   | Service and Warranty               | Implement service ticket and warranty validation foundation.                                                                                                                                          | Approved and merged.                                     |
-| P3.12.0 | Finance Foundation Contracts       | Establish validated accounting-period, journal, posting, numbering, currency, and exchange-rate contracts without AP/AR workflows.                                                                    | Implemented on feature branch; awaiting review.          |
+| P3.12.0 | Finance Foundation Contracts       | Establish validated accounting-period, journal, posting, numbering, currency, and exchange-rate contracts without AP/AR workflows.                                                                    | Approved and merged.                                     |
+| P3.12.1 | General Ledger Core                | Harden Finance-owned periods, journals, reversals, snapshots, authorization, idempotency, concurrency, and PostgreSQL invariants.                                                                     | Implemented on feature branch; awaiting review.          |
 | P3.12   | General Ledger and AR/AP           | Extend GL close controls and implement AP/AR subledgers through published Finance posting contracts.                                                                                                  | Proposed ADR-0002; business decisions remain open.       |
 | P3.13   | Treasury, Banking, Checks, Cashbox | Implement payment, receipt, cashbox, check, bank reconciliation foundations.                                                                                                                          | Bank/payment/check policies.                             |
 | P3.14   | Project Accounting                 | Implement project ledger and project stock/accounting references.                                                                                                                                     | Project ownership and budget policy.                     |
@@ -45,11 +46,11 @@ is explicitly accepted.
 
 ## P3.12 proposed sequence
 
-P3.12 is not approved for implementation. The proposed architecture and open business inputs are
-recorded in [`ADR-0002`](../adr/0002-p3-12-finance-architecture.md).
+The approved sequencing architecture and open business inputs are recorded in
+[`ADR-0002`](../adr/0002-p3-12-finance-architecture.md).
 
-1. P3.12.0 Finance Foundation Contracts — implemented and awaiting review.
-2. P3.12.1 General Ledger close and approval controls.
+1. P3.12.0 Finance Foundation Contracts — approved and merged.
+2. P3.12.1 General Ledger Core — implemented and awaiting review.
 3. P3.12.2 Accounts Payable core.
 4. P3.12.3 AP matching and Finance posting integration.
 5. P3.12.4 Accounts Receivable core.

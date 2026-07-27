@@ -262,7 +262,7 @@ final class JooqPostingRepositoryTest {
   void rejectsAmbiguousOpenAccountingPeriodResolution() {
     final UUID companyId = UUID.randomUUID();
     seedCompanyBranch(companyId, UUID.randomUUID());
-    final JooqFinanceRepository finance = new JooqFinanceRepository(dsl);
+    final JooqFinanceRepository finance = new JooqFinanceRepository(dsl, objectMapper);
     for (int index = 1; index <= 2; index++) {
       final UUID fiscalYearId = UUID.randomUUID();
       finance.saveFiscalYear(
@@ -488,7 +488,8 @@ final class JooqPostingRepositoryTest {
     final UUID fiscalYearId = UUID.randomUUID();
     final UUID periodId = UUID.randomUUID();
     seedCompanyBranch(companyId, branchId);
-    final JooqFinanceRepository financeRepository = new JooqFinanceRepository(dsl);
+    final JooqFinanceRepository financeRepository =
+        new JooqFinanceRepository(dsl, objectMapper);
     financeRepository.saveAccount(account(debitAccount, companyId, "1100"));
     financeRepository.saveAccount(account(creditAccount, companyId, "4100"));
     financeRepository.saveFiscalYear(
@@ -515,6 +516,9 @@ final class JooqPostingRepositoryTest {
             (company, branch) -> {},
             currency -> {},
             allowAllAuthorization(),
+            (journal, taxContext, postedAt) -> {
+              throw new UnsupportedOperationException();
+            },
             series -> "JE-POSTING-1",
             (actor, action, id) -> auditActions.add(action),
             (type, id) -> outboxEvents.add(type),
@@ -522,7 +526,11 @@ final class JooqPostingRepositoryTest {
             Clock.fixed(NOW, ZoneOffset.UTC));
     final PostingInfrastructureAdapters.JournalAdapter adapter =
         new PostingInfrastructureAdapters.JournalAdapter(
-            finance, financeRepository, postingRuleEvaluator());
+            finance,
+            financeRepository,
+            postingRuleEvaluator(),
+            enterpriseReferences(dsl),
+            masterDataReferences(dsl));
     final AccountingEvent event = event(companyId, branchId, "real-journal");
     final PostingRule rule = rule(companyId, debitAccount, creditAccount);
 
@@ -1268,7 +1276,7 @@ final class JooqPostingRepositoryTest {
     final DataSourceTransactionManager transactionManager =
         new DataSourceTransactionManager(source);
     final JooqFinanceRepository financeRepository =
-        new JooqFinanceRepository(transactionalDsl);
+        new JooqFinanceRepository(transactionalDsl, objectMapper);
     financeRepository.saveAccount(account(debitAccount, companyId, "1100"));
     financeRepository.saveAccount(account(creditAccount, companyId, "4100"));
     final UUID fiscalYearId = UUID.randomUUID();
@@ -1324,6 +1332,9 @@ final class JooqPostingRepositoryTest {
             (company, branch) -> {},
             currency -> {},
             allowAllAuthorization(),
+            (journal, taxContext, postedAt) -> {
+              throw new UnsupportedOperationException();
+            },
             series -> "JE-" + UUID.randomUUID(),
             platformAdapter::record,
             outbox::publish,
@@ -1342,7 +1353,12 @@ final class JooqPostingRepositoryTest {
                 masterDataReferences(transactionalDsl), enterpriseReferences(transactionalDsl)),
             new PostingInfrastructureAdapters.PeriodAdapter(financeRepository),
             new PostingInfrastructureAdapters.DimensionsAdapter(financeRepository),
-            new PostingInfrastructureAdapters.JournalAdapter(finance, financeRepository, evaluator),
+            new PostingInfrastructureAdapters.JournalAdapter(
+                finance,
+                financeRepository,
+                evaluator,
+                enterpriseReferences(transactionalDsl),
+                masterDataReferences(transactionalDsl)),
             platformAdapter,
             outbox,
             authorization,
@@ -1528,10 +1544,16 @@ final class JooqPostingRepositoryTest {
   private static FinancePorts.AuthorizationPort allowAllAuthorization() {
     return new FinancePorts.AuthorizationPort() {
       @Override
+      public void authenticate(final String actor) {}
+
+      @Override
       public void require(final String actor, final String capability, final UUID companyId) {}
 
       @Override
       public void requireCostCenter(final String actor, final UUID costCenterId) {}
+
+      @Override
+      public void requireProfitCenter(final String actor, final UUID profitCenterId) {}
 
       @Override
       public void requireDimension(final String actor, final String dimensionCode) {}
@@ -1574,7 +1596,8 @@ final class JooqPostingRepositoryTest {
   }
 
   private void seedAccount(final UUID companyId, final UUID accountId) {
-    new JooqFinanceRepository(dsl).saveAccount(account(accountId, companyId, "1000"));
+    new JooqFinanceRepository(dsl, objectMapper)
+        .saveAccount(account(accountId, companyId, "1000"));
   }
 
   private void seedCompanyBranch(final UUID companyId, final UUID branchId) {

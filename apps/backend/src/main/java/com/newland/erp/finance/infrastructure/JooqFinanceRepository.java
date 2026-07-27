@@ -8,6 +8,10 @@ import com.newland.erp.finance.domain.FinanceException;
 import com.newland.erp.finance.domain.FiscalYear;
 import com.newland.erp.finance.domain.JournalEntry;
 import com.newland.erp.finance.domain.JournalReversal;
+import com.newland.erp.finance.domain.JournalPostingSnapshot;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import com.newland.erp.finance.domain.ProfitCenter;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -17,15 +21,18 @@ import java.util.Optional;
 import java.util.UUID;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.JSONB;
 import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public final class JooqFinanceRepository implements FinanceRepository {
   private final DSLContext dsl;
+  private final ObjectMapper objectMapper;
 
-  public JooqFinanceRepository(final DSLContext dslContext) {
+  public JooqFinanceRepository(final DSLContext dslContext, final ObjectMapper mapper) {
     this.dsl = dslContext;
+    this.objectMapper = mapper;
   }
 
   @Override
@@ -153,10 +160,34 @@ public final class JooqFinanceRepository implements FinanceRepository {
             DSL.field("period_code", String.class),
             DSL.field("starts_on", LocalDate.class),
             DSL.field("ends_on", LocalDate.class),
-            DSL.field("closed", Boolean.class))
-        .values(p.id(), p.fiscalYearId(), p.code(), p.startsOn(), p.endsOn(), p.closed())
+            DSL.field("closed", Boolean.class),
+            DSL.field("period_state", String.class))
+        .values(
+            p.id(),
+            p.fiscalYearId(),
+            p.code(),
+            p.startsOn(),
+            p.endsOn(),
+            p.closed(),
+            p.state().name())
         .execute();
     return p;
+  }
+
+  @Override
+  public AccountingPeriod updatePeriod(
+      final AccountingPeriod period, final AccountingPeriod.State expectedState) {
+    final int updated =
+        dsl.update(DSL.table("finance_accounting_period"))
+            .set(DSL.field("period_state", String.class), period.state().name())
+            .set(DSL.field("closed", Boolean.class), period.closed())
+            .where(DSL.field("id", UUID.class).eq(period.id()))
+            .and(DSL.field("period_state", String.class).eq(expectedState.name()))
+            .execute();
+    if (updated != 1) {
+      throw new FinanceException("Accounting period was modified concurrently.");
+    }
+    return period;
   }
 
   @Override
@@ -186,12 +217,29 @@ public final class JooqFinanceRepository implements FinanceRepository {
                     r.get("period_code", String.class),
                     r.get("starts_on", LocalDate.class),
                     r.get("ends_on", LocalDate.class),
-                    r.get("closed", Boolean.class)));
+                    AccountingPeriod.State.valueOf(r.get("period_state", String.class))));
   }
 
   @Override
   public Optional<FinanceRepository.PostingPeriod> findOpenPostingPeriod(
       final UUID companyId, final LocalDate postingDate) {
+    return findPostingPeriod(
+        companyId,
+        postingDate,
+        com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose.ORDINARY);
+  }
+
+  @Override
+  public Optional<FinanceRepository.PostingPeriod> findPostingPeriod(
+      final UUID companyId,
+      final LocalDate postingDate,
+      final com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose purpose) {
+    final List<String> permittedStates =
+        purpose
+                == com.newland.erp.finance.domain.AccountingPeriodContract.PostingPurpose
+                    .CLOSE_ADJUSTMENT
+            ? List.of(AccountingPeriod.State.OPEN.name(), AccountingPeriod.State.CLOSING.name())
+            : List.of(AccountingPeriod.State.OPEN.name());
     final List<FinanceRepository.PostingPeriod> matches = dsl.select(
             DSL.field("fy.id", UUID.class), DSL.field("p.id", UUID.class))
         .from(DSL.table("finance_fiscal_year").as("fy"))
@@ -199,7 +247,7 @@ public final class JooqFinanceRepository implements FinanceRepository {
         .on(DSL.field("p.fiscal_year_id", UUID.class).eq(DSL.field("fy.id", UUID.class)))
         .where(DSL.field("fy.company_id", UUID.class).eq(companyId))
         .and(DSL.field("fy.closed", Boolean.class).eq(false))
-        .and(DSL.field("p.closed", Boolean.class).eq(false))
+        .and(DSL.field("p.period_state", String.class).in(permittedStates))
         .and(
             DSL.val(postingDate)
                 .between(
@@ -305,7 +353,139 @@ public final class JooqFinanceRepository implements FinanceRepository {
                         l.exchangeRateSnapshot())
                       .execute());
     }
-    return j;
+    return exists ? j.withLockVersion(j.lockVersion() + 1) : j;
+  }
+
+  @Override
+  public JournalEntry insertJournal(final JournalEntry journal) {
+    final int inserted =
+        dsl.insertInto(DSL.table("finance_journal_entry"))
+            .columns(
+                DSL.field("id", UUID.class),
+                DSL.field("journal_number", String.class),
+                DSL.field("idempotency_key", String.class),
+                DSL.field("company_id", UUID.class),
+                DSL.field("branch_id", UUID.class),
+                DSL.field("fiscal_year_id", UUID.class),
+                DSL.field("period_id", UUID.class),
+                DSL.field("posting_date", LocalDate.class),
+                DSL.field("status", String.class),
+                DSL.field("reversal_of_id", UUID.class),
+                DSL.field("lock_version", Integer.class),
+                DSL.field("created_at", OffsetDateTime.class),
+                DSL.field("actor", String.class))
+            .values(
+                journal.id(),
+                journal.number(),
+                journal.idempotencyKey(),
+                journal.companyId(),
+                journal.branchId(),
+                journal.fiscalYearId(),
+                journal.periodId(),
+                journal.postingDate(),
+                journal.status().name(),
+                journal.reversalOfId(),
+                journal.lockVersion(),
+                OffsetDateTime.ofInstant(journal.createdAt(), ZoneOffset.UTC),
+                journal.actor())
+            .onConflict(DSL.field("idempotency_key"))
+            .doNothing()
+            .execute();
+    if (inserted == 0) {
+      return findJournalByIdempotencyKey(journal.idempotencyKey())
+          .orElseThrow(() -> new FinanceException("Concurrent journal creation failed."));
+    }
+    journal
+        .lines()
+        .forEach(
+            line ->
+                dsl.insertInto(DSL.table("finance_journal_line"))
+                    .columns(
+                        DSL.field("id"),
+                        DSL.field("journal_id"),
+                        DSL.field("account_id"),
+                        DSL.field("debit"),
+                        DSL.field("credit"),
+                        DSL.field("cost_center_id"),
+                        DSL.field("profit_center_id"),
+                        DSL.field("dimension_code"),
+                        DSL.field("currency_id"),
+                        DSL.field("currency_amount"),
+                        DSL.field("exchange_rate_snapshot"))
+                    .values(
+                        line.id(),
+                        journal.id(),
+                        line.accountId(),
+                        line.debit(),
+                        line.credit(),
+                        line.costCenterId(),
+                        line.profitCenterId(),
+                        line.dimensionCode(),
+                        line.currencyId(),
+                        line.currencyAmount(),
+                        line.exchangeRateSnapshot())
+                    .execute());
+    return journal;
+  }
+
+  @Override
+  public JournalPostingSnapshot savePostingSnapshot(final JournalPostingSnapshot snapshot) {
+    final JSONB taxContext;
+    try {
+      taxContext = JSONB.valueOf(objectMapper.writeValueAsString(snapshot.taxContext()));
+    } catch (JsonProcessingException exception) {
+      throw new FinanceException("Journal tax snapshot cannot be serialized.");
+    }
+    dsl.insertInto(DSL.table("finance_journal_posting_snapshot"))
+        .columns(
+            DSL.field("journal_entry_id"),
+            DSL.field("transaction_currency"),
+            DSL.field("base_currency"),
+            DSL.field("exchange_rate_id"),
+            DSL.field("exchange_rate_source"),
+            DSL.field("exchange_rate_type"),
+            DSL.field("exchange_rate_date"),
+            DSL.field("exchange_rate"),
+            DSL.field("transaction_amount"),
+            DSL.field("base_amount"),
+            DSL.field("tax_context"),
+            DSL.field("posted_at"))
+        .values(
+            snapshot.journalEntryId(),
+            snapshot.transactionCurrency(),
+            snapshot.baseCurrency(),
+            snapshot.exchangeRateId(),
+            snapshot.exchangeRateSource(),
+            snapshot.exchangeRateType(),
+            snapshot.exchangeRateDate(),
+            snapshot.exchangeRate(),
+            snapshot.transactionAmount(),
+            snapshot.baseAmount(),
+            taxContext,
+            OffsetDateTime.ofInstant(snapshot.postedAt(), ZoneOffset.UTC))
+        .execute();
+    return snapshot;
+  }
+
+  @Override
+  public Optional<JournalPostingSnapshot> findPostingSnapshot(final UUID journalEntryId) {
+    return dsl.selectFrom(DSL.table("finance_journal_posting_snapshot"))
+        .where(DSL.field("journal_entry_id", UUID.class).eq(journalEntryId))
+        .fetchOptional(
+            row ->
+                new JournalPostingSnapshot(
+                    row.get("journal_entry_id", UUID.class),
+                    row.get("transaction_currency", String.class),
+                    row.get("base_currency", String.class),
+                    row.get("exchange_rate_id", UUID.class),
+                    row.get("exchange_rate_source", String.class),
+                    row.get("exchange_rate_type", String.class),
+                    row.get("exchange_rate_date", LocalDate.class),
+                    row.get("exchange_rate", BigDecimal.class),
+                    row.get("transaction_amount", BigDecimal.class),
+                    row.get("base_amount", BigDecimal.class),
+                    readMap(row.get("tax_context", JSONB.class)),
+                    row.get("posted_at", OffsetDateTime.class).toInstant()));
   }
 
   @Override
@@ -386,5 +566,16 @@ public final class JooqFinanceRepository implements FinanceRepository {
         r.get("lock_version", Integer.class),
         created.toInstant(),
         r.get("actor", String.class));
+  }
+
+  @SuppressWarnings("unchecked")
+  private java.util.Map<String, String> readMap(final JSONB value) {
+    try {
+      return value == null
+          ? java.util.Map.of()
+          : objectMapper.readValue(value.data(), java.util.Map.class);
+    } catch (JsonProcessingException exception) {
+      throw new FinanceException("Journal tax snapshot cannot be deserialized.");
+    }
   }
 }

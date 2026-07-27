@@ -1,22 +1,21 @@
 # Next Codex Task
 
-## Recommended Task: Review P3.12.0 Finance Foundation Contracts
+## Recommended Task: Review P3.12.1 General Ledger Core
 
-P3.12.0 is implemented on a feature branch and must pass engineering and architecture review before
+P3.12.1 is implemented on a feature branch and must pass engineering and architecture review before
 merge.
 
-Review accounting-period state and posting-purpose validation, balanced journal reconciliation
-contracts, immutable financial-document numbering assignments, company-scoped currency and
-exchange-rate snapshots, published application ports, posting-message validation, DTO isolation, and
-Spring Modulith boundaries.
+Review accounting-period state transitions, PostgreSQL double-entry enforcement, posted journal and
+snapshot immutability, atomic idempotency, optimistic concurrency, reversal safety, company and
+branch isolation, Identity authorization, transactional audit/outbox behavior, posting snapshots,
+published Finance contract adapters, and Spring Modulith boundaries.
 
-Do not begin P3.12.1, AP, AR, Treasury, or another bounded context until P3.12.0 is approved.
+Do not begin P3.12.2, AP, AR, Treasury, or another bounded context until P3.12.1 is approved.
 
-## P3.12.0 Boundaries
+## P3.12.1 Boundaries
 
 - No AP supplier-invoice or payment workflow.
 - No AR customer-invoice, collection, aging, or allocation workflow.
-- No new Finance persistence or migration.
-- No UI or new REST endpoint.
-- Existing P3.7 Finance and P3.8 Posting Engine behavior remains authoritative.
+- No Treasury, UI, reporting, or financial statements.
+- Existing P3.8 Posting Engine remains the only rule-driven journal creator.
 - Existing Procurement, Inventory, Sales, and Service/Warranty integrations remain unchanged.

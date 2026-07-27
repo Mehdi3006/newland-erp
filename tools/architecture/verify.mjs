@@ -114,6 +114,8 @@ const approvedBackendFiles = new Set([
   'apps/backend/src/main/resources/db/migration/V17__logistics_reference_integrity.sql',
   'apps/backend/src/main/resources/db/migration/V18__crm_foundation.sql',
   'apps/backend/src/main/resources/db/migration/V19__service_warranty_foundation.sql',
+  'apps/backend/src/main/resources/db/migration/V20__general_ledger_core.sql',
+  'apps/backend/src/main/resources/db/migration/V21__general_ledger_release_guards.sql',
 ]);
 const approvedFrontendFiles = new Set([
   'apps/web/enterprise-structure/index.html',
@@ -261,6 +263,9 @@ const approvedFinanceTables = new Set([
   'finance_journal_entry',
   'finance_journal_line',
   'finance_journal_reversal',
+  'finance_journal_posting_snapshot',
+  'finance_document_number_counter',
+  'finance_document_number_assignment',
 ]);
 const approvedFinancePostingTables = new Set([
   'finance_accounting_event',
@@ -481,7 +486,7 @@ function classifySqlBoundaryViolation(repositoryPath, source) {
       !approvedFinanceTables.has(tableName) &&
       !approvedFinancePostingTables.has(tableName)
     ) {
-      return `ERP migrations may only define tables approved through P3.9.1: ${normalizedPath} (${tableName})`;
+      return `ERP migrations may only define approved bounded-context tables: ${normalizedPath} (${tableName})`;
     }
   }
 
@@ -535,7 +540,7 @@ async function main() {
   }
 
   console.log(
-    'Architecture verification passed: approved bounded-context boundaries through P3.11 are intact.',
+    'Architecture verification passed: approved bounded-context boundaries through P3.12.1 are intact.',
   );
 }
 

@@ -1,6 +1,8 @@
 package com.newland.erp.finance.application;
 
 import com.newland.erp.finance.domain.Account;
+import com.newland.erp.finance.domain.AccountingPeriod;
+import com.newland.erp.finance.domain.AccountingPeriodContract;
 import com.newland.erp.finance.domain.JournalEntry;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,6 +34,9 @@ public final class FinanceCommands {
       boolean closed,
       String actor) {}
 
+  public record TransitionPeriod(
+      UUID periodId, AccountingPeriod.State targetState, String actor) {}
+
   public record CreateJournal(
       String idempotencyKey,
       UUID companyId,
@@ -39,15 +44,31 @@ public final class FinanceCommands {
       UUID fiscalYearId,
       UUID periodId,
       LocalDate postingDate,
+      AccountingPeriodContract.PostingPurpose postingPurpose,
       List<JournalEntry.JournalLine> lines,
       List<UUID> attachmentIds,
       String actor) {}
 
   public record EditJournal(UUID journalId, List<JournalEntry.JournalLine> lines, String actor) {}
 
-  public record PostJournal(UUID journalId, String actor) {}
+  public record PostJournal(
+      UUID journalId,
+      AccountingPeriodContract.PostingPurpose postingPurpose,
+      java.util.Map<String, String> taxContext,
+      String actor) {}
 
-  public record ReverseJournal(UUID journalId, String idempotencyKey, String actor) {}
+  public record PostJournalWithSnapshot(
+      UUID journalId,
+      AccountingPeriodContract.PostingPurpose postingPurpose,
+      com.newland.erp.finance.domain.JournalPostingSnapshot snapshot,
+      String actor) {}
+
+  public record ReverseJournal(
+      UUID journalId,
+      String idempotencyKey,
+      LocalDate postingDate,
+      AccountingPeriodContract.PostingPurpose postingPurpose,
+      String actor) {}
 
   private FinanceCommands() {}
 }

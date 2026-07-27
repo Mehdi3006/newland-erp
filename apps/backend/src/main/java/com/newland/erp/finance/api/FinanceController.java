@@ -4,6 +4,7 @@ import com.newland.erp.finance.application.FinanceCommands;
 import com.newland.erp.finance.application.FinanceService;
 import com.newland.erp.finance.domain.Account;
 import com.newland.erp.finance.domain.AccountingPeriod;
+import com.newland.erp.finance.domain.AccountingPeriodContract;
 import com.newland.erp.finance.domain.FiscalYear;
 import com.newland.erp.finance.domain.JournalEntry;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,7 +38,7 @@ public final class FinanceController {
   @ResponseStatus(HttpStatus.CREATED)
   public Account account(
       @Valid @RequestBody final AccountRequest r,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
     return service.createAccount(
         new FinanceCommands.CreateAccount(
             r.companyId(), r.code(), r.name(), r.type(), r.parentId(), r.postable(), actor));
@@ -45,7 +47,7 @@ public final class FinanceController {
   @PostMapping("/fiscal-years")
   public FiscalYear fiscalYear(
       @Valid @RequestBody final FiscalYearRequest r,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
     return service.createFiscalYear(
         new FinanceCommands.CreateFiscalYear(
             r.companyId(), r.code(), r.startsOn(), r.endsOn(), r.closed(), actor));
@@ -54,17 +56,26 @@ public final class FinanceController {
   @PostMapping("/periods")
   public AccountingPeriod period(
       @Valid @RequestBody final PeriodRequest r,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
     return service.createPeriod(
         new FinanceCommands.CreatePeriod(
             r.fiscalYearId(), r.code(), r.startsOn(), r.endsOn(), r.closed(), actor));
+  }
+
+  @PostMapping("/periods/{id}/state")
+  public AccountingPeriod transitionPeriod(
+      @PathVariable final UUID id,
+      @Valid @RequestBody final PeriodStateRequest request,
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
+    return service.transitionPeriod(
+        new FinanceCommands.TransitionPeriod(id, request.state(), actor));
   }
 
   @PostMapping("/journals")
   @ResponseStatus(HttpStatus.CREATED)
   public JournalEntry journal(
       @Valid @RequestBody final JournalRequest r,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
     return service.createJournal(
         new FinanceCommands.CreateJournal(
             r.idempotencyKey(),
@@ -73,6 +84,7 @@ public final class FinanceController {
             r.fiscalYearId(),
             r.periodId(),
             r.postingDate(),
+            r.postingPurpose(),
             r.lines().stream().map(LineRequest::toDomain).toList(),
             r.attachmentIds() == null ? List.of() : r.attachmentIds(),
             actor));
@@ -81,17 +93,25 @@ public final class FinanceController {
   @PostMapping("/journals/{id}/post")
   public JournalEntry post(
       @PathVariable final UUID id,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
-    return service.postJournal(new FinanceCommands.PostJournal(id, actor));
+      @Valid @RequestBody final PostJournalRequest request,
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
+    return service.postJournal(
+        new FinanceCommands.PostJournal(
+            id, request.postingPurpose(), request.taxContext(), actor));
   }
 
   @PostMapping("/journals/{id}/reverse")
   public JournalEntry reverse(
       @PathVariable final UUID id,
-      @RequestBody final IdempotencyRequest request,
-      @RequestHeader(name = "X-Newland-Actor", defaultValue = "system") final String actor) {
+      @Valid @RequestBody final ReversalRequest request,
+      @RequestHeader(name = "X-Newland-Actor") final String actor) {
     return service.reverseJournal(
-        new FinanceCommands.ReverseJournal(id, request.idempotencyKey(), actor));
+        new FinanceCommands.ReverseJournal(
+            id,
+            request.idempotencyKey(),
+            request.postingDate(),
+            request.postingPurpose(),
+            actor));
   }
 
   public record AccountRequest(
@@ -116,6 +136,8 @@ public final class FinanceController {
       @NotNull LocalDate endsOn,
       boolean closed) {}
 
+  public record PeriodStateRequest(@NotNull AccountingPeriod.State state) {}
+
   public record JournalRequest(
       @NotBlank String idempotencyKey,
       @NotNull UUID companyId,
@@ -123,6 +145,7 @@ public final class FinanceController {
       @NotNull UUID fiscalYearId,
       @NotNull UUID periodId,
       @NotNull LocalDate postingDate,
+      AccountingPeriodContract.PostingPurpose postingPurpose,
       @NotEmpty List<@Valid LineRequest> lines,
       List<UUID> attachmentIds) {}
 
@@ -151,5 +174,11 @@ public final class FinanceController {
     }
   }
 
-  public record IdempotencyRequest(@NotBlank String idempotencyKey) {}
+  public record PostJournalRequest(
+      AccountingPeriodContract.PostingPurpose postingPurpose, Map<String, String> taxContext) {}
+
+  public record ReversalRequest(
+      @NotBlank String idempotencyKey,
+      @NotNull LocalDate postingDate,
+      AccountingPeriodContract.PostingPurpose postingPurpose) {}
 }

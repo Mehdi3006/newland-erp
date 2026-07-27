@@ -73,6 +73,7 @@ final class FinanceServicePostingIdempotencyTest {
         mock(FinancePorts.EnterprisePort.class),
         mock(FinancePorts.MasterDataPort.class),
         authorization,
+        mock(FinancePorts.PostingSnapshotPort.class),
         mock(FinancePorts.NumberSeriesPort.class),
         mock(FinancePorts.AuditPort.class),
         mock(FinancePorts.OutboxPort.class),
