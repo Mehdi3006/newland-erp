@@ -372,6 +372,74 @@ final class JooqGeneralLedgerCoreTest {
   }
 
   @Test
+  void rejectsForeignCurrencyJournalWithMissingLineCurrency() {
+    final UUID euroId = UUID.randomUUID();
+    seedCurrency(euroId, "EUR");
+    final BigDecimal baseAmount = new BigDecimal("110.000000");
+    final BigDecimal transactionAmount = new BigDecimal("100.000000");
+    final BigDecimal rate = new BigDecimal("1.100000000000");
+    final JournalEntry journal =
+        foreignJournal(
+            "missing-line-currency",
+            foreignLine(
+                debitAccountId,
+                baseAmount,
+                BigDecimal.ZERO,
+                euroId,
+                transactionAmount,
+                rate),
+            foreignLine(
+                creditAccountId,
+                BigDecimal.ZERO,
+                baseAmount,
+                null,
+                transactionAmount,
+                rate));
+    final FinanceInfrastructureAdapters.PostingSnapshotAdapter adapter =
+        new FinanceInfrastructureAdapters.PostingSnapshotAdapter(
+            enterpriseReferences(), exchangeRateReferences(rate), dsl);
+
+    assertThatThrownBy(() -> adapter.resolve(journal, Map.of(), NOW))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("Every foreign-currency journal line");
+  }
+
+  @Test
+  void rejectsJournalWithMixedForeignCurrencyIds() {
+    final UUID euroId = UUID.randomUUID();
+    final UUID otherCurrencyId = UUID.randomUUID();
+    seedCurrency(euroId, "EUR");
+    seedCurrency(otherCurrencyId, "GBP");
+    final BigDecimal baseAmount = new BigDecimal("110.000000");
+    final BigDecimal transactionAmount = new BigDecimal("100.000000");
+    final BigDecimal rate = new BigDecimal("1.100000000000");
+    final JournalEntry journal =
+        foreignJournal(
+            "mixed-line-currency",
+            foreignLine(
+                debitAccountId,
+                baseAmount,
+                BigDecimal.ZERO,
+                euroId,
+                transactionAmount,
+                rate),
+            foreignLine(
+                creditAccountId,
+                BigDecimal.ZERO,
+                baseAmount,
+                otherCurrencyId,
+                transactionAmount,
+                rate));
+    final FinanceInfrastructureAdapters.PostingSnapshotAdapter adapter =
+        new FinanceInfrastructureAdapters.PostingSnapshotAdapter(
+            enterpriseReferences(), exchangeRateReferences(rate), dsl);
+
+    assertThatThrownBy(() -> adapter.resolve(journal, Map.of(), NOW))
+        .isInstanceOf(FinanceException.class)
+        .hasMessageContaining("one transaction currency");
+  }
+
+  @Test
   void rejectsUnauthorizedPostingBeforeSnapshotResolutionOrPersistence() {
     final JournalEntry draft = repository.insertJournal(journal("unauthorized-posting"));
     final AtomicBoolean snapshotResolved = new AtomicBoolean();
@@ -612,6 +680,25 @@ final class JooqGeneralLedgerCoreTest {
         currencyId,
         currencyAmount,
         exchangeRate);
+  }
+
+  private JournalEntry foreignJournal(
+      final String key, final JournalEntry.JournalLine... lines) {
+    return new JournalEntry(
+        UUID.randomUUID(),
+        "JE-" + UUID.randomUUID(),
+        key + "-" + UUID.randomUUID(),
+        companyId,
+        branchId,
+        fiscalYearId,
+        periodId,
+        LocalDate.of(2026, 7, 15),
+        JournalEntry.JournalStatus.DRAFT,
+        List.of(lines),
+        null,
+        0,
+        NOW,
+        "actor");
   }
 
   private FinanceCommands.CreateJournal createJournal(

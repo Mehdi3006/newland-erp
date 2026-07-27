@@ -66,6 +66,13 @@ public final class FinanceInfrastructureAdapters {
           enterprise
               .companyBaseCurrency(journal.companyId())
               .orElseThrow(() -> new FinanceException("Company accounting currency is unavailable."));
+      final boolean hasCurrencyMetadata =
+          journal.lines().stream().anyMatch(line -> line.currencyId() != null);
+      if (hasCurrencyMetadata
+          && journal.lines().stream().anyMatch(line -> line.currencyId() == null)) {
+        throw new FinanceException(
+            "Every foreign-currency journal line requires the transaction currency.");
+      }
       final var currencyIds =
           journal.lines().stream()
               .map(JournalEntry.JournalLine::currencyId)
